@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "mycityco2-data-process"
+version = "0.1.0"
+description = ""
+authors = ["Adam Bonnet <abo@open-net.ch>", "Remy Zulauff <rzu@open-net.ch>"]
+readme = "README.md"
+packages = [{include = "mycityco2_data_process"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+typer = {extras = ["all"], version = "^0.9.0"}
+loguru = "^0.7.0"
+psycopg2-binary = "^2.9.6"
+xmltodict = "^0.13.0"
+bs4 = "^0.0.1"
+otools-rpc = "^0.3.0"
+pydantic = {extras = ["dotenv"], version = "^1.10.8"}
+
+[tool.poetry.dev-dependencies]
+pytest = "^5"
+black = "^22"
+isort = "^5"
+flake8 = "^4"
+bandit = "^1"
+pre-commit = "^2"
+
+[tool.poetry.scripts]
+mycityco2-data-process = 'mycityco2_data_process.cli:cli'
+
+[tool.isort]
+profile="black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
