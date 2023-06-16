@@ -386,5 +386,5 @@ class AbstractImporter(ABC):
         logger.debug("Sorting dataframe")
         dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
 
-        logger.debug(f"Exporting dataframe to 'temp_file/{self._db}.csv'")
-        dataframe.to_csv(f"temp_file/{self._db}.csv", index=False)
+        logger.debug(f"Exporting dataframe to 'data/temp_file/{self._db}.csv'")
+        dataframe.to_csv(f"data/temp_file/{self._db}.csv", index=False)

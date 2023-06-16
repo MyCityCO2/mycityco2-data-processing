@@ -1,4 +1,5 @@
 from pydantic import BaseSettings
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -44,9 +45,11 @@ class Settings(BaseSettings):
     # SKIPPED_CITY: str = ['Allinges', 'Amancy']
     SKIPPED_CITY: list[str] = []
 
-    SQL_PORT = 666
+    SQL_PORT = 668
     SQL_LOCAL = False
     # SQL_PORT = 667
+    
+    PATH = Path(__file__).absolute().parent
 
 
 settings = Settings()

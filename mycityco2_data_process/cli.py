@@ -1,7 +1,7 @@
 import functools
 import os
 import time
-
+from pathlib import Path
 import pandas
 import typer
 from loguru import logger
@@ -38,17 +38,17 @@ def run():
     except KeyboardInterrupt:
         logger.info("Ctrl-c entered. Exiting")
 
-    except Exception as e:
-        print(e)
-        logger.error(e)
+    # except Exception as e:
+    #     print(e)
+    #     logger.error(e)
 
     # Merging csv #
     logger.info("Merging CSV")
-    _path = "temp_file/"
+    _path = const.settings.PATH / "data" / "temp_file"
 
     dataframe = pandas.DataFrame()
 
-    csv_files = os.listdir(_path)
+    csv_files = os.listdir(_path.resolve().as_posix())
 
     if len(csv_files) > 1:
         for file in csv_files:
@@ -61,7 +61,7 @@ def run():
                 os.remove(path)
 
         dataframe.to_csv(
-            f"temp_file/do-not-join-{const.settings.ENV_DB}.csv", index=False
+            f"data/temp_file/do-not-join-{const.settings.ENV_DB}.csv", index=False
         )
 
         logger.info("CSV Merged")
@@ -72,7 +72,7 @@ def run():
 
         # webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1117834229154324591/WZ-LFSF9_g0ZDAhHukKJguJB8UI1liBB_21U7iktOkvG7QopB_As5XA5Bnk9Dj_OTBAb", username="Importer Files")
 
-        # with open(f'temp_file/{const.settings.ENV_DB}.csv', "rb") as f:
+        # with open(f'data/temp_file/{const.settings.ENV_DB}.csv', "rb") as f:
         #     webhook.add_file(file=f.read(), filename="importer.csv")
 
         # response = webhook.execute()
