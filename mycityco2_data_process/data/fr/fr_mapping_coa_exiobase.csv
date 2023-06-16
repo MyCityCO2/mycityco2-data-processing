@@ -1,0 +1,14 @@
+condition,external id carbon.factor,rule_order
+645*,ons_import_carbon_factor.organizational_activity-type_public_administration_defense_services_compulsory_social_security_services,10
+641*,__export__.carbon_factor_328_772b8cd0,10
+6811,__export__.carbon_factor_328_772b8cd0,20
+682*,__export__.carbon_factor_328_772b8cd0,20
+683*,__export__.carbon_factor_328_772b8cd0,20
+684*,__export__.carbon_factor_328_772b8cd0,20
+685*,__export__.carbon_factor_328_772b8cd0,20
+686*,__export__.carbon_factor_328_772b8cd0,20
+687*,__export__.carbon_factor_328_772b8cd0,20
+688*,__export__.carbon_factor_328_772b8cd0,20
+689*,__export__.carbon_factor_328_772b8cd0,20
+622*,ons_import_carbon_factor.professional_services-type_research_development_services,10
+6*,ons_import_carbon_factor.organizational_activity-type_other_services_not_elsewhere_specified,99
