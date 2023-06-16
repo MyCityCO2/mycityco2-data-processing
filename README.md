@@ -10,7 +10,7 @@ Clone the repository
 git clone xxx
 ```
 
-then configure you're importer in the const.py file. Don't forget you're RPC url. Now you can start the program.
+then configure you're importer in the const.settings.py file. Don't forget you're RPC url. Now you can start the program.
 
 ## Todo
 
