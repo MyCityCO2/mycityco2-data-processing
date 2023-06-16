@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     # ENV_TEMPLATE_DB: str = 'template'
     ENV_DB: str = "temp-departement"
     ENV_USERNAME: str = "__system__"
+    # todo: add validator and make it optional
     ENV_PASSWORD: str
+    ENV_MASTER_PASSWORD: str
 
     CITY_CHUNK_SIZE: int = 1000
     ACCOUNT_CHUNK_SIZE: int = 6000
@@ -45,3 +47,6 @@ class Settings(BaseSettings):
     SQL_PORT = 666
     SQL_LOCAL = False
     # SQL_PORT = 667
+
+
+settings = Settings()
