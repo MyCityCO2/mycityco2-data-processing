@@ -17,3 +17,5 @@ then configure you're importer in the const.settings.py file. Don't forget you'r
 - Find other ways to create chart of account that are only needed
 - Check if all FrImporter function are needed in this object or the parent one.
 - Add more logger.debug and check if other are needed
+- Use pathlib for paths managment
+- Fix CI

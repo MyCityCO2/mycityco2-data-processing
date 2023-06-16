@@ -32,10 +32,10 @@ class Settings(BaseSettings):
     ACCOUNT_CHUNK_SIZE: int = 6000
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
-    CARBON_FILE: str = "static/fr/fr_mapping_coa_exiobase.csv"
+    CARBON_FILE: str = "data/fr/fr_mapping_coa_exiobase.csv"
 
     ACCOUNT_ASSET_TOGGLE: bool = True
-    ACCOUNT_ASSET_FILE: str = "static/fr/fr_mapping_immo_exiobase.csv"
+    ACCOUNT_ASSET_FILE: str = "data/fr/fr_mapping_immo_exiobase.csv"
 
     YEAR: list = list(range(2010, 2022))
     # YEAR: list = [2021]
