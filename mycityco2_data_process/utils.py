@@ -40,10 +40,17 @@ def retreive_dataset(cities):
     data = json.loads(content).get("records")
 
     dataset = []
+    
+    wanted_fields = ['com_name', 'com_siren_code']
 
     for city in data:
         city_field = city.get("fields")
         if city_field.get("com_name") in cities:
-            dataset.append(city)
-
+            city_dict = {'fields': {}}
+            for k, v in city_field.items():
+                if k in wanted_fields:
+                    city_dict['fields'][k] = v
+                    
+            dataset.append(city_dict)
+            
     return dataset
