@@ -15,6 +15,8 @@ xmltodict = "^0.13.0"
 bs4 = "^0.0.1"
 otools-rpc = "^0.3.0"
 pydantic = {extras = ["dotenv"], version = "^1.10.8"}
+pandas = "^2.0.2"
+multiprocess = "^0.70.14"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5"
@@ -23,6 +25,7 @@ isort = "^5"
 flake8 = "^4"
 bandit = "^1"
 pre-commit = "^2"
+discord-webhook = "^1.1.0"
 
 [tool.poetry.scripts]
 mycityco2-data-process = 'mycityco2_data_process.cli:cli'
