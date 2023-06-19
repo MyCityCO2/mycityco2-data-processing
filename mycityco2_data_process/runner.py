@@ -117,9 +117,9 @@ def run(
     **Etape 3** - Importation comptabilite : _{round(step3_elapsed_time)}_ secondes / _{round(step3_elapsed_time / 60)}_ minutes
     **Etape 4** - Creation ammortissement : _{round(step4_elapsed_time)}_ secondes / _{round(step4_elapsed_time / 60)}_ minutes
     **Etape 5** - Exporting des donnees et traitement : _{round(step5_elapsed_time)}_ secondes / _{round(step5_elapsed_time / 60)}_ minutes
-    
+
     **Temps total** : _{round(total_elapsed_time)}_ secondes / _{round(total_elapsed_time / 60)}_ minutes
-    
+
     **Temps approximatif par ville** : _{round(total_elapsed_time / importer._city_amount) if importer._city_amount > 0 else round(total_elapsed_time)}_ secondes / _{round(( total_elapsed_time / 60) / importer._city_amount) if importer._city_amount > 0 else round(total_elapsed_time / 60)}_ minutes
     """
 
