@@ -64,7 +64,7 @@ class AbstractImporter(ABC):
                 f"Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
             )
             vals = vals_list[chunk * i : chunk * (i + 1)]
-            created_record = self.env[model].create(vals) 
+            created_record = self.env[model].create(vals)
 
             created_record.read(fields=[k for k, v in vals[0].items()])
 
@@ -152,7 +152,9 @@ class AbstractImporter(ABC):
 
         journals = self.env["account.journal"].create(journals_ids)
 
-        journals.read(fields=[k for k,v in journals_ids[0].items()]) if len(journals_ids) else None
+        journals.read(fields=[k for k, v in journals_ids[0].items()]) if len(
+            journals_ids
+        ) else None
 
         self.journals_ids = journals
 
@@ -186,11 +188,17 @@ class AbstractImporter(ABC):
         """This function is there to create account.move"""
 
         account_move_id = self.env["account.move"].create(vals)
-        
-        if not len(self.account_account_ids):
-            self.account_account_ids = self.env['account.move']
-            
-        self.account_account_ids |= account_move_id
+
+        if isinstance(vals, dict):
+            account_move_id.read(fields=[k for k, v in vals.items()])
+
+        elif isinstance(vals, list) and len(vals):
+            account_move_id.read(fields=[k for k, v in vals[0].items()])
+
+        if not self.account_move_ids or not len(self.account_move_ids):
+            self.account_move_ids = self.env["account.move"]
+
+        self.account_move_ids |= account_move_id
 
         return account_move_id
 
@@ -200,7 +208,7 @@ class AbstractImporter(ABC):
 
         self.get_account_move_data()
 
-        self.account_account_ids.action_post()
+        self.account_move_ids.action_post()
 
     def export_data(self):
         co2_categories = [
@@ -295,11 +303,15 @@ class AbstractImporter(ABC):
         logger.debug("Extracting data from ODOO, using SQL")
         dataframe = pandas.read_sql_query(query, connection)
 
-        ### Habitant ###
+        # Habitant
         logger.debug("Matching habitant/postal code to city")
-        siren_to_habitant = pandas.read_csv(f"{const.settings.PATH.as_posix()}/data/fr/siren.csv")
-        #todo : test .drop_duplicates()
-        siren_to_postal = pandas.read_csv(f"{const.settings.PATH.as_posix()}/data/fr/postal.csv").drop_duplicates()
+        siren_to_habitant = pandas.read_csv(
+            f"{const.settings.PATH.as_posix()}/data/fr/siren.csv"
+        )
+        # todo : test .drop_duplicates()
+        siren_to_postal = pandas.read_csv(
+            f"{const.settings.PATH.as_posix()}/data/fr/postal.csv"
+        ).drop_duplicates()
 
         siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
 
@@ -336,9 +348,9 @@ class AbstractImporter(ABC):
         #     return 0
         # dataframe['habitant'] = dataframe['city_id'].apply(habitant)
         # dataframe['city_zip_code'] = dataframe['city_id'].apply(zip_code)
-        ### Habitant ###
+        # Habitant
 
-        ### Category ###
+        # Category
         logger.debug("Matching Category to account.account")
 
         def matching(code):
@@ -371,12 +383,12 @@ class AbstractImporter(ABC):
         dataframe = dataframe.drop(columns=["category_id", "category_tuple"])
 
         dataframe = dataframe[dataframe["category_name"] != False]
-        ### Category ###
+        # Category
 
         logger.debug("Computing Carbon per habitant")
-        ### Carbon Factor ###
+        # Carbon Factor
         # dataframe['entry_carbon_kgco2e_per_hab'] = dataframe['entry_carbon_kgco2e']/dataframe['habitant']
-        ### Carbon Factor ###
+        # Carbon Factor
 
         # dataframe = dataframe[['city_id', 'city_name', "account_code", 'account_name', 'journal_code', 'journal_name', 'entry_year', 'entry_amount']]
 
@@ -386,4 +398,7 @@ class AbstractImporter(ABC):
         dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
 
         logger.debug(f"Exporting dataframe to 'data/temp_file/{self._db}.csv'")
-        dataframe.to_csv(f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv", index=False)
+        dataframe.to_csv(
+            f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
+            index=False,
+        )

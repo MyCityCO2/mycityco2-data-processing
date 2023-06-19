@@ -54,31 +54,31 @@ def run(
 
     step1_start_time = time.perf_counter()
     if not only_export:
-        cities = importer.populate_cities()
-        journals_ids = importer.populate_journal()
+        importer.populate_cities()
+        importer.populate_journal()
     step1_end_time = time.perf_counter()
     step1_elapsed_time = step1_end_time - step1_start_time
     # logger.critical(f'Creation des societes: {step1_elapsed_time} secondes / {step1_elapsed_time / 60} minutes')
 
     step2_start_time = time.perf_counter()
     if not only_export:
-        account_accounts = importer.populate_account_account()
+        importer.populate_account_account()
     step2_end_time = time.perf_counter()
     step2_elapsed_time = step2_end_time - step2_start_time
     # logger.critical(f'Creation des plan comptable: {step2_elapsed_time} secondes / {step2_elapsed_time / 60} minutes')
 
     step3_start_time = time.perf_counter()
     if not only_export:
-        account_move = importer.populate_account_move()
+        importer.populate_account_move()
     step3_end_time = time.perf_counter()
     step3_elapsed_time = step3_end_time - step3_start_time
     # logger.critical(f'Importation comptabilite: {step3_elapsed_time} secondes / {step3_elapsed_time / 60} minutes')
 
     step4_start_time = time.perf_counter()
     if not only_export:
-        account_asset_categories = importer.account_asset_create_categories()
-        account_asset = importer.populate_account_asset()
-        account_asset_ids = importer.account_asset_create_move()
+        importer.account_asset_create_categories()
+        importer.populate_account_asset()
+        importer.account_asset_create_move()
     step4_end_time = time.perf_counter()
     step4_elapsed_time = step4_end_time - step4_start_time
     # logger.critical(f'Creation ammortissement: {step4_elapsed_time} secondes / {step4_elapsed_time / 60} minutes')
@@ -102,7 +102,7 @@ def run(
     step5_elapsed_time = step5_end_time - step5_start_time
     # logger.critical(f'Export des donnees: {step5_elapsed_time} secondes / {step5_elapsed_time / 60} minutes')
 
-    ## Reporting ##
+    # Reporting
     total_elapsed_time = (
         step1_elapsed_time
         + step2_elapsed_time
@@ -125,7 +125,7 @@ def run(
 
     send_discord(reporting, link=const.settings.ENV_URL + f"/web?db={importer._db}")
 
-    ## Reporting ##
+    # Reporting
 
 
 def init(offset, dataset, instance, instance_number, instance_limit, departement):
@@ -135,7 +135,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         "departement", f"{departement}"
     )
 
-    ### DBObject ###
+    # DBObject
     dbmanager = DBManager(const.settings.ENV_URL, const.settings.ENV_MASTER_PASSWORD)
 
     dbobject = dbmanager.dbobject
@@ -149,7 +149,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         dbmanager.duplicate(const.settings.ENV_TEMPLATE_DB, dbname)
     else:
         logger.info(f"DB {dbname} Already exist using this one")
-    ### DBManagement ###
+    # DBManagement
 
     # return
     utils.change_superuser_state(dbname, True)

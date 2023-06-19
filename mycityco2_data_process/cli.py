@@ -1,19 +1,15 @@
 import functools
-import os
 import time
 
-import pandas
 import typer
 from loguru import logger
 from multiprocess.pool import Pool
 
-from mycityco2_data_process import const
-
-from . import runner, utils
+from . import runner
 
 cli = typer.Typer(no_args_is_help=True)
 
-instance_number = 1
+instance_number = 7
 instance_limit = 40
 instance = list(range(0, instance_number * instance_limit, instance_limit))
 
@@ -22,7 +18,7 @@ instance = list(range(0, instance_number * instance_limit, instance_limit))
 def run():
     start_time = time.perf_counter()
     # city = ["Fillière"]
-    city = ["La Roche-sur-Foron"]
+    # city = ["La Roche-sur-Foron"]
     departement = 74
     func = functools.partial(
         runner.init,
@@ -67,7 +63,7 @@ def run():
     #     )
 
     #     logger.info("CSV Merged")
-        # Merging csv #
+    # Merging csv #
 
     # else:
     #     logger.info("Finding one file, no merging")
@@ -79,6 +75,7 @@ def run():
     logger.error(
         f"All took {final_time} secondes / {final_time / 60} minutes to execute"
     )
+
 
 @cli.callback()
 def callback():

@@ -37,7 +37,7 @@ def send_discord(
 
 
 def setup():
-    ### Logger Params ###
+    # Logger Params
     logger.remove()
     logger.add(
         sys.stdout,
@@ -55,7 +55,7 @@ def setup():
         colorize=False,
         level="CRITICAL",
     )
-    ### NTFY ###
+    # NTFY
     if const.settings.NTFY_TOGGLE:
         logger.debug(
             "Notification will be send to : \n{}".format(

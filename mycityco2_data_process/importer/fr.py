@@ -2,7 +2,6 @@ import csv
 import datetime
 import fnmatch
 import json
-import time
 
 import requests
 import xmltodict
@@ -268,22 +267,22 @@ class FrImporter(AbstractImporter):
     def get_account_move_data(self):
         account_journal_dict = {}
         for journal in self.journals_ids:
-            if journal.code != 'BUD':
+            if journal.code != "BUD":
                 continue
             account_journal_dict[journal.company_id[0]] = journal
-            
+
         for city in self.city_ids:
             journal_bud = account_journal_dict[city.id]
 
             account_account_ids = self.city_account_account_ids.filtered(
                 lambda element: element.company_id[0] == city.id
             )
-            
+
             account_dict = {}
             for account in account_account_ids:
                 account_dict[account.code] = account.id
-                
-            default_plan_identifier = account_dict['000']
+
+            default_plan_identifier = account_dict["000"]
 
             for year in const.settings.YEAR:
                 city_account_move_line_ids = []
@@ -309,14 +308,11 @@ class FrImporter(AbstractImporter):
                 if year <= 2015:
                     refine_parameter = "budget:BP"
 
-                start_timer = time.perf_counter()
                 url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
 
                 data = requests.get(
                     url.format(year, city.company_registry, refine_parameter)
                 ).json()
-
-                end_timer = time.perf_counter()
 
                 if isinstance(data, dict) and (
                     data.get("error_code") or data.get("status_code")
@@ -324,8 +320,10 @@ class FrImporter(AbstractImporter):
                     continue
 
                 for i in data:
-                        
-                    plan_identifier = account_dict.get(i.get('compte'), default_plan_identifier)
+
+                    plan_identifier = account_dict.get(
+                        i.get("compte"), default_plan_identifier
+                    )
 
                     debit_bud = i.get("obnetdeb") + i.get("onbdeb")
                     credit_bud = i.get("obnetcre") + i.get("onbcre")
@@ -354,8 +352,10 @@ class FrImporter(AbstractImporter):
                 account_move_lines_ids = self.env["account.move.line"].create(
                     city_account_move_line_ids
                 )
-                
-                account_move_lines_ids.read(fields=[k for k, v in city_account_move_line_ids[0].items()]) if len(city_account_move_line_ids) else None
+
+                account_move_lines_ids.read(
+                    fields=[k for k, v in city_account_move_line_ids[0].items()]
+                ) if len(city_account_move_line_ids) else None
 
                 if not self.account_move_line_ids:
                     self.account_move_line_ids = account_move_lines_ids
@@ -372,13 +372,13 @@ class FrImporter(AbstractImporter):
         cities = self.city_ids
 
         account_asset_categories = {}
-        
+
         account_journal_dict = {}
         for journal in self.journals_ids:
-            if journal.code != 'IMMO':
+            if journal.code != "IMMO":
                 continue
             account_journal_dict[journal.company_id[0]] = journal
-             
+
         account_account_dict = {}
         for account in self.city_account_account_ids:
             _key = f"{account.company_id[0]}-{account.code}"
@@ -391,7 +391,9 @@ class FrImporter(AbstractImporter):
                 if row.get("FE") and row.get("FE") != "#N/A":
                     carbon_id = self.env.ref(row.get("FE"))
                 for city in cities:
-                    account_account_id = account_account_dict.get(f"{city.id}-{row['Code']}")
+                    account_account_id = account_account_dict.get(
+                        f"{city.id}-{row['Code']}"
+                    )
 
                     if account_account_id:
                         vals = {
@@ -401,11 +403,15 @@ class FrImporter(AbstractImporter):
                             "company_id": city.id,
                         }
 
-                        vals |= {
-                            'use_carbon_value': True,
-                            'carbon_in_is_manual': True,
-                            'carbon_in_factor_id': carbon_id.id,
-                        } if row.get('FE') and row.get('FE') != "#N/A" else {}
+                        vals |= (
+                            {
+                                "use_carbon_value": True,
+                                "carbon_in_is_manual": True,
+                                "carbon_in_factor_id": carbon_id.id,
+                            }
+                            if row.get("FE") and row.get("FE") != "#N/A"
+                            else {}
+                        )
 
                         account_account_depreciation_id = self.env[
                             "account.account"
@@ -460,11 +466,11 @@ class FrImporter(AbstractImporter):
 
         if len(account_asset_ids) > 0:
             ids = self.env["account.asset"].create(account_asset_ids)
-            
+
             ids.read(fields=[k for k, v in account_asset_ids[0].items()])
 
-        # for index, account_asset in enumerate(account_asset_ids):
-        #     account_asset["id"] = ids.ids[index]
+            # for index, account_asset in enumerate(account_asset_ids):
+            #     account_asset["id"] = ids.ids[index]
 
             self.env["account.asset"].browse(ids.ids).validate()
 
