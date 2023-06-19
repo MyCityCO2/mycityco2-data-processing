@@ -29,7 +29,7 @@ pre-commit = "^2"
 discord-webhook = "^1.1.0"
 
 [tool.poetry.scripts]
-mycityco2-data-process = 'mycityco2_data_process.cli:cli'
+mycityco2 = 'mycityco2_data_process.cli:cli'
 
 [tool.isort]
 profile="black"
