@@ -93,8 +93,6 @@ class FrImporter(AbstractImporter):
         for city in data:
             city = city.get("fields")
 
-            # logger.error(city.get('com_name'))
-
             final_city = {}
 
             if len(self._wanted_city) and city.get("com_name") not in self._wanted_city:
@@ -268,21 +266,28 @@ class FrImporter(AbstractImporter):
         "city_ids", "journals_ids", "city_account_account_ids", "currency_id"
     )
     def get_account_move_data(self):
-        account_move_line_ids = []
+        account_journal_dict = {}
+        for journal in self.journals_ids:
+            if journal.code != 'BUD':
+                continue
+            account_journal_dict[journal.company_id[0]] = journal
+            
         for city in self.city_ids:
-            journal_bud = self.journals_ids.filtered(
-                lambda element: element.code == "BUD" and element.company_id == city.id
-            )
+            journal_bud = account_journal_dict[city.id]
 
             account_account_ids = self.city_account_account_ids.filtered(
-                lambda element: element.company_id == city.id
+                lambda element: element.company_id[0] == city.id
             )
+            
+            account_dict = {}
+            for account in account_account_ids:
+                account_dict[account.code] = account.id
+                
+            default_plan_identifier = account_dict['000']
 
             for year in const.settings.YEAR:
                 city_account_move_line_ids = []
                 date = "{0}-12-31".format(year)
-
-                # account_move_line_ids = []
 
                 logger.debug(f"Generating account move set for {city.name} for {year}")
 
@@ -305,54 +310,30 @@ class FrImporter(AbstractImporter):
                     refine_parameter = "budget:BP"
 
                 start_timer = time.perf_counter()
-                logger.error(f"Getting info for {city.name} for {year}")
                 url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
 
                 data = requests.get(
                     url.format(year, city.company_registry, refine_parameter)
                 ).json()
 
-                logger.error(f"Info retreived for {city.name} for {year}")
                 end_timer = time.perf_counter()
-
-                logger.error(f"{end_timer - start_timer} SECOND")
 
                 if isinstance(data, dict) and (
                     data.get("error_code") or data.get("status_code")
                 ):
-                    logger.warning(
-                        "No data found for {}. Please check {}".format(city.name, year)
-                    )
                     continue
 
                 for i in data:
-                    # logger.error('256')
-
-                    plan_id = account_account_ids.filtered(
-                        lambda element: element.code == i.get("compte")
-                    )
-
-                    if len(plan_id) == 0:
-                        plan_id = account_account_ids.filtered(
-                            lambda element: element.code == "000"
-                        )
-
-                        if i.get("nomen") in NOMENCLATURE:
-                            logger.warning(
-                                "No account found for {}. Please check {}".format(
-                                    city.name, i.get("compte")
-                                )
-                            )
+                        
+                    plan_identifier = account_dict.get(i.get('compte'), default_plan_identifier)
 
                     debit_bud = i.get("obnetdeb") + i.get("onbdeb")
                     credit_bud = i.get("obnetcre") + i.get("onbcre")
 
-                    # logger.error((plan_id.code, debit_bud, credit_bud))
-
                     line_id_bud = {
                         "company_id": city.id,
                         "date": date,
-                        "account_id": plan_id.id,
+                        "account_id": plan_identifier,
                         "currency_id": self.currency_id.id,
                         "move_id": account_move_bud_id.id,
                         "name": i.get("compte"),
@@ -363,24 +344,18 @@ class FrImporter(AbstractImporter):
                         city_account_move_line_ids.append(
                             line_id_bud | {"debit": 0.0, "credit": credit_bud}
                         )
-                    elif credit_bud != 0.0:
-                        city_account_move_line_ids.append(
-                            line_id_bud | {"debit": -credit_bud, "credit": 0.0}
-                        )
 
                     if debit_bud != 0.0:
                         city_account_move_line_ids.append(
                             line_id_bud | {"debit": debit_bud, "credit": 0.0}
-                        )
-                    elif debit_bud != 0.0:
-                        account_move_line_ids.append(
-                            line_id_bud | {"debit": 0.0, "credit": -debit_bud}
                         )
 
                 logger.debug(f"Sending data for {city.name} for {year}")
                 account_move_lines_ids = self.env["account.move.line"].create(
                     city_account_move_line_ids
                 )
+                
+                account_move_lines_ids.read(fields=[k for k, v in city_account_move_line_ids[0].items()]) if len(city_account_move_line_ids) else None
 
                 if not self.account_move_line_ids:
                     self.account_move_line_ids = account_move_lines_ids
@@ -397,6 +372,17 @@ class FrImporter(AbstractImporter):
         cities = self.city_ids
 
         account_asset_categories = {}
+        
+        account_journal_dict = {}
+        for journal in self.journals_ids:
+            if journal.code != 'IMMO':
+                continue
+            account_journal_dict[journal.company_id[0]] = journal
+             
+        account_account_dict = {}
+        for account in self.city_account_account_ids:
+            _key = f"{account.company_id[0]}-{account.code}"
+            account_account_dict[_key] = account
 
         with open(const.settings.ACCOUNT_ASSET_FILE, newline="") as csvfile:
             reader = csv.DictReader(csvfile)
@@ -405,14 +391,9 @@ class FrImporter(AbstractImporter):
                 if row.get("FE") and row.get("FE") != "#N/A":
                     carbon_id = self.env.ref(row.get("FE"))
                 for city in cities:
-                    account_account_id = self.city_account_account_ids.filtered(
-                        lambda element: element.code == row["Code"]
-                        and element.company_id == city.id
-                    )
+                    account_account_id = account_account_dict.get(f"{city.id}-{row['Code']}")
 
-                    if len(account_account_id) == 1:
-                        # account_account_id = account_account_id[0]
-
+                    if account_account_id:
                         vals = {
                             "name": account_account_id.name,
                             "code": "6811." + row.get("Code"),
@@ -420,20 +401,17 @@ class FrImporter(AbstractImporter):
                             "company_id": city.id,
                         }
 
-                        # vals |= {
-                        #     'use_carbon_value': True,
-                        #     'carbon_in_is_manual': True,
-                        #     'carbon_in_factor_id': carbon_id.id,
-                        # } if row.get('FE') and row.get('FE') != "#N/A" else {}
+                        vals |= {
+                            'use_carbon_value': True,
+                            'carbon_in_is_manual': True,
+                            'carbon_in_factor_id': carbon_id.id,
+                        } if row.get('FE') and row.get('FE') != "#N/A" else {}
 
                         account_account_depreciation_id = self.env[
                             "account.account"
                         ].create(vals)
 
-                        journal_id = self.journals_ids.filtered(
-                            lambda element: element.code == "IMMO"
-                            and element.company_id == city.id
-                        )
+                        journal_id = account_journal_dict[city.id]
 
                         cat = self.env["account.asset.profile"].create(
                             {
@@ -470,26 +448,25 @@ class FrImporter(AbstractImporter):
                 and lines.debit > 0
             ):
                 year = datetime.datetime.strptime(lines.date, "%Y-%m-%d").strftime("%Y")
-                profile_id = categories.get(lines.account_id)
+                profile_id = categories.get(lines.account_id[0])
                 account_asset = {
                     "name": lines_name + "." + year,
                     "purchase_value": lines.debit,
                     "date_start": str(int(year)) + "-01-01",
-                    "company_id": lines.company_id,
+                    "company_id": lines.company_id[0],
                     "profile_id": profile_id,
                 }
                 account_asset_ids.append(account_asset) if profile_id else None
 
-        ids = (
-            self.env["account.asset"].create(account_asset_ids)
-            if len(account_asset_ids) > 0
-            else None
-        )
+        if len(account_asset_ids) > 0:
+            ids = self.env["account.asset"].create(account_asset_ids)
+            
+            ids.read(fields=[k for k, v in account_asset_ids[0].items()])
 
-        for index, account_asset in enumerate(account_asset_ids):
-            account_asset["id"] = ids.ids[index]
+        # for index, account_asset in enumerate(account_asset_ids):
+        #     account_asset["id"] = ids.ids[index]
 
-        self.env["account.asset"].browse(ids.ids).validate()
+            self.env["account.asset"].browse(ids.ids).validate()
 
         self.account_asset = account_asset_ids
 
