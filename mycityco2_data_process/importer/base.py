@@ -63,11 +63,12 @@ class AbstractImporter(ABC):
             logger.debug(
                 f"Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
             )
-            created_city = self.env[model].create(
-                vals_list[chunk * i : chunk * (i + 1)]
-            )
+            vals = vals_list[chunk * i : chunk * (i + 1)]
+            created_record = self.env[model].create(vals) 
 
-            vals_list_id |= created_city
+            created_record.read(fields=[k for k, v in vals[0].items()])
+
+            vals_list_id |= created_record
 
         logger.debug(f"All {model} chunk has been created")
         return vals_list_id
@@ -151,6 +152,8 @@ class AbstractImporter(ABC):
 
         journals = self.env["account.journal"].create(journals_ids)
 
+        journals.read(fields=[k for k,v in journals_ids[0].items()]) if len(journals_ids) else None
+
         self.journals_ids = journals
 
         return journals_ids
@@ -183,6 +186,11 @@ class AbstractImporter(ABC):
         """This function is there to create account.move"""
 
         account_move_id = self.env["account.move"].create(vals)
+        
+        if not len(self.account_account_ids):
+            self.account_account_ids = self.env['account.move']
+            
+        self.account_account_ids |= account_move_id
 
         return account_move_id
 
@@ -190,19 +198,9 @@ class AbstractImporter(ABC):
     def populate_account_move(self):
         """This function is only there to iterate on the create of account.move data."""
 
-        account_move_list = self.get_account_move_data()
+        self.get_account_move_data()
 
-        # logger.error([elem.get('company_id') for elem in account_move_list])
-
-        # account_move_ids = self.env['account.move.line'].create(account_move_list)
-
-        # logger.debug(f"Data sent for {', '.join(self.city_ids.mapped('name'))} for {', '.join(const.settings.YEAR)}")
-
-        self.env["account.move"].search(
-            [("amount_total_signed", "!=", 0)]
-        ).action_post()
-
-        # self.account_move_line_ids = account_move_ids
+        self.account_account_ids.action_post()
 
     def export_data(self):
         co2_categories = [
@@ -271,27 +269,27 @@ class AbstractImporter(ABC):
         )
 
         query = """
-        SELECT 
+        SELECT
         partner.company_registry AS city_id,
         company.name AS city_name,
         account.code AS account_code,
         account.name AS account_name,
         account.code||'-'||account.name AS account,
-        CASE WHEN journal.code = 'IMMO' THEN 'INV' ELSE 'FCT' END AS journal_code, 
+        CASE WHEN journal.code = 'IMMO' THEN 'INV' ELSE 'FCT' END AS journal_code,
         CASE WHEN journal.name = 'Immobilisations' THEN 'Investissement' ELSE 'Fonctionnement' END AS journal_name,
         EXTRACT ('Year' FROM lines.date) AS entry_year,
         lines.amount_currency AS entry_amount,
         currency.name AS entry_currency,
         lines.carbon_balance as entry_carbon_kgCO2e
-        
+
         FROM res_company AS company
-        
+
         INNER JOIN res_partner AS partner ON company.partner_id = partner.id
         INNER JOIN res_currency AS currency ON company.currency_id = currency.id
         INNER JOIN account_account AS account ON account.company_id = company.id
         INNER JOIN account_move_line AS lines on account.id = lines.account_id
         INNER JOIN account_journal AS journal ON lines.journal_id = journal.id and lines.company_id = journal.company_id
-        
+
         WHERE EXTRACT ('Year' FROM lines.date) > 2015;
         """
         logger.debug("Extracting data from ODOO, using SQL")
@@ -299,12 +297,13 @@ class AbstractImporter(ABC):
 
         ### Habitant ###
         logger.debug("Matching habitant/postal code to city")
-        siren_to_habitant = pandas.read_csv("data/fr/siren.csv")
-        siren_to_postal = pandas.read_csv("data/fr/postal.csv")
+        siren_to_habitant = pandas.read_csv(f"{const.settings.PATH.as_posix()}/data/fr/siren.csv")
+        #todo : test .drop_duplicates()
+        siren_to_postal = pandas.read_csv(f"{const.settings.PATH.as_posix()}/data/fr/postal.csv").drop_duplicates()
 
         siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
 
-        print(siren_to_postal)
+        # print(siren_to_postal)
 
         city_data = pandas.merge(
             siren_to_habitant,
@@ -381,10 +380,10 @@ class AbstractImporter(ABC):
 
         # dataframe = dataframe[['city_id', 'city_name', "account_code", 'account_name', 'journal_code', 'journal_name', 'entry_year', 'entry_amount']]
 
-        print(dataframe)
+        # print(dataframe)
 
         logger.debug("Sorting dataframe")
         dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
 
         logger.debug(f"Exporting dataframe to 'data/temp_file/{self._db}.csv'")
-        dataframe.to_csv(f"data/temp_file/{self._db}.csv", index=False)
+        dataframe.to_csv(f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv", index=False)
