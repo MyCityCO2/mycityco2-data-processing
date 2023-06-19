@@ -299,8 +299,8 @@ class AbstractImporter(ABC):
 
         ### Habitant ###
         logger.debug("Matching habitant/postal code to city")
-        siren_to_habitant = pandas.read_csv("static/fr/siren.csv")
-        siren_to_postal = pandas.read_csv("static/fr/postal.csv")
+        siren_to_habitant = pandas.read_csv("data/fr/siren.csv")
+        siren_to_postal = pandas.read_csv("data/fr/postal.csv")
 
         siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
 
