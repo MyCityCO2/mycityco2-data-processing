@@ -1,4 +1,4 @@
-name: Tests And Linting
+name: MyCityCO2 CI
 on:
   pull_request:
   push:
