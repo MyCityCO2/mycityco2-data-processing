@@ -52,36 +52,40 @@ def run(
     # only_export = True
     only_export = False
 
-    step1_start_time = time.perf_counter()
-    if not only_export:
-        importer.populate_cities()
-        importer.populate_journal()
-    step1_end_time = time.perf_counter()
-    step1_elapsed_time = step1_end_time - step1_start_time
-    # logger.critical(f'Creation des societes: {step1_elapsed_time} secondes / {step1_elapsed_time / 60} minutes')
+    step1_elapsed_time = (
+        step2_elapsed_time
+    ) = step3_elapsed_time = step4_elapsed_time = 0
 
-    step2_start_time = time.perf_counter()
-    if not only_export:
-        importer.populate_account_account()
-    step2_end_time = time.perf_counter()
-    step2_elapsed_time = step2_end_time - step2_start_time
-    # logger.critical(f'Creation des plan comptable: {step2_elapsed_time} secondes / {step2_elapsed_time / 60} minutes')
+    try:
+        step1_start_time = time.perf_counter()
+        if not only_export:
+            importer.populate_cities()
+            importer.populate_journal()
+        step1_end_time = time.perf_counter()
+        step1_elapsed_time = step1_end_time - step1_start_time
 
-    step3_start_time = time.perf_counter()
-    if not only_export:
-        importer.populate_account_move()
-    step3_end_time = time.perf_counter()
-    step3_elapsed_time = step3_end_time - step3_start_time
-    # logger.critical(f'Importation comptabilite: {step3_elapsed_time} secondes / {step3_elapsed_time / 60} minutes')
+        step2_start_time = time.perf_counter()
+        if not only_export:
+            importer.populate_account_account()
+        step2_end_time = time.perf_counter()
+        step2_elapsed_time = step2_end_time - step2_start_time
 
-    step4_start_time = time.perf_counter()
-    if not only_export:
-        importer.account_asset_create_categories()
-        importer.populate_account_asset()
-        importer.account_asset_create_move()
-    step4_end_time = time.perf_counter()
-    step4_elapsed_time = step4_end_time - step4_start_time
-    # logger.critical(f'Creation ammortissement: {step4_elapsed_time} secondes / {step4_elapsed_time / 60} minutes')
+        step3_start_time = time.perf_counter()
+        if not only_export:
+            importer.populate_account_move()
+        step3_end_time = time.perf_counter()
+        step3_elapsed_time = step3_end_time - step3_start_time
+
+        step4_start_time = time.perf_counter()
+        if not only_export:
+            importer.account_asset_create_categories()
+            importer.populate_account_asset()
+            importer.account_asset_create_move()
+        step4_end_time = time.perf_counter()
+        step4_elapsed_time = step4_end_time - step4_start_time
+    except Exception:
+        const.settings.ERROR_COUNTER += 1
+        utils.change_superuser_state(dbname, False)
 
     # importer.gen_carbon_factor()
 
@@ -110,18 +114,39 @@ def run(
         + step4_elapsed_time
         + step5_elapsed_time
     )
+
+    def _get_formated_text(timer, minute: bool = False):
+        seconds = round(timer)
+        final_text = f"_{seconds}_ seconde(s)"
+
+        if minute:
+            minutes = round(timer / 60)
+            final_text += f" / _{minutes}_ minute(s)"
+
+        return final_text
+
     reporting = f"""
     Chargement de **{importer._city_amount}** villes sur la DB **{importer._db}**
-    **Etape 1** - Creation des societes : _{round(step1_elapsed_time)}_ secondes / _{round(step1_elapsed_time / 60)}_ minutes
-    **Etape 2** - Creation des plan comptable : _{round(step2_elapsed_time)}_ secondes / _{round(step2_elapsed_time / 60)}_ minutes
-    **Etape 3** - Importation comptabilite : _{round(step3_elapsed_time)}_ secondes / _{round(step3_elapsed_time / 60)}_ minutes
-    **Etape 4** - Creation ammortissement : _{round(step4_elapsed_time)}_ secondes / _{round(step4_elapsed_time / 60)}_ minutes
-    **Etape 5** - Exporting des donnees et traitement : _{round(step5_elapsed_time)}_ secondes / _{round(step5_elapsed_time / 60)}_ minutes
+    **Etape 1** - Creation des societes : {_get_formated_text(step1_elapsed_time, minute=True)}
+        > **Etape 1.1** - Generation des societes : {_get_formated_text(importer.step1_1, minute=True)}
+        > **Etape 1.2** - Creation des societes (Odoo) : {_get_formated_text(importer.step1_2, minute=True)}
+    **Etape 2** - Creation des plan comptable : {_get_formated_text(step2_elapsed_time, minute=True)}
+        > **Etape 2.1** - Generation des plan comptable : {_get_formated_text(importer.step2_1, minute=True)}
+        > **Etape 2.2** - Generation des plan comptable par villes : {_get_formated_text(importer.step2_2, minute=True)}
+        > **Etape 2.3** - Creation des plan comptable par villes : {_get_formated_text(importer.step2_3, minute=True)}
+    **Etape 3** - Importation comptabilite : {_get_formated_text(step3_elapsed_time, minute=True)}
+    **Etape 4** - Creation ammortissement : {_get_formated_text(step4_elapsed_time, minute=True)}
+    **Etape 5** - Exporting des donnees et traitement : {_get_formated_text(step5_elapsed_time, minute=True)}
 
-    **Temps total** : _{round(total_elapsed_time)}_ secondes / _{round(total_elapsed_time / 60)}_ minutes
+    **Temps total** : {_get_formated_text(total_elapsed_time, minute=True)}
 
-    **Temps approximatif par ville** : _{round(total_elapsed_time / importer._city_amount) if importer._city_amount > 0 else round(total_elapsed_time)}_ secondes / _{round(( total_elapsed_time / 60) / importer._city_amount) if importer._city_amount > 0 else round(total_elapsed_time / 60)}_ minutes
+    **Temps approximatif par ville** : {_get_formated_text((total_elapsed_time / importer._city_amount) if importer._city_amount > 0 else total_elapsed_time, minute=True)}
     """
+
+    if const.settings.ERROR_COUNTER > 0:
+        reporting += f"""
+        __**Total Errors : {const.settings.ERROR_COUNTER}**__
+        """
 
     send_discord(reporting, link=const.settings.ENV_URL + f"/web?db={importer._db}")
 

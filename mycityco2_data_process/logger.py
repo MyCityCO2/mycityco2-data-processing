@@ -53,7 +53,7 @@ def setup():
         lambda msg: send_discord(msg),
         format="{message}",
         colorize=False,
-        level="ERROR",  # POST message to discord when error
+        level="CRITICAL",  # POST message to discord when error
     )
     # NTFY
     if const.settings.NTFY_TOGGLE:
@@ -64,3 +64,5 @@ def setup():
                 )
             )
         )
+
+    logger.level("FTRACE", no=3, color="<blue>")

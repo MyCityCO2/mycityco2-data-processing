@@ -56,5 +56,7 @@ class Settings(BaseSettings):
     SQL_LOCAL = False
     # SQL_PORT = 667
 
+    ERROR_COUNTER = 0
+
 
 settings = Settings()

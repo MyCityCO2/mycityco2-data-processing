@@ -5,11 +5,11 @@ import typer
 from loguru import logger
 from multiprocess.pool import Pool
 
-from . import runner
+from . import runner, utils
 
 cli = typer.Typer(no_args_is_help=True)
 
-instance_number = 7
+instance_number = 1
 instance_limit = 40
 instance = list(range(0, instance_number * instance_limit, instance_limit))
 
@@ -17,13 +17,13 @@ instance = list(range(0, instance_number * instance_limit, instance_limit))
 @cli.command()
 def run():
     start_time = time.perf_counter()
-    # city = ["Fillière"]
+    city = ["Nancy-sur-Cluses"]
     # city = ["Scionzier"]
     departement = 74
     func = functools.partial(
         runner.init,
-        dataset=[],
-        # dataset=utils.retreive_dataset(city),
+        # dataset=[],
+        dataset=utils.retreive_dataset(city),
         instance=instance,
         instance_number=instance_number,
         instance_limit=instance_limit,
@@ -72,7 +72,7 @@ def run():
 
     final_time = end_time - start_time
 
-    logger.error(
+    logger.success(
         f"All took {final_time} secondes / {final_time / 60} minutes to execute"
     )
 
