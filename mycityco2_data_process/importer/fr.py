@@ -68,9 +68,7 @@ class FrImporter(AbstractImporter):
         if len(self._wanted_city):
             limit = -1
             offset = 0
-        self.url: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}".format(
-            limit, offset, departement
-        )
+        self.url: str = f"https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={limit}&start={offset}&refine.dep_code={departement}"
 
     @property
     def source_name(self):
@@ -286,7 +284,7 @@ class FrImporter(AbstractImporter):
 
             for year in const.settings.YEAR:
                 city_account_move_line_ids = []
-                date = "{0}-12-31".format(year)
+                date = f"{year}-12-31"
 
                 logger.debug(f"Generating account move set for {city.name} for {year}")
 
@@ -353,9 +351,10 @@ class FrImporter(AbstractImporter):
                     city_account_move_line_ids
                 )
 
-                account_move_lines_ids.read(
-                    fields=[k for k, v in city_account_move_line_ids[0].items()]
-                ) if len(city_account_move_line_ids) else None
+                if len(city_account_move_line_ids):
+                    account_move_lines_ids.read(
+                        fields=[k for k, v in city_account_move_line_ids[0].items()]
+                    )
 
                 if not self.account_move_line_ids:
                     self.account_move_line_ids = account_move_lines_ids
@@ -462,7 +461,8 @@ class FrImporter(AbstractImporter):
                     "company_id": lines.company_id[0],
                     "profile_id": profile_id,
                 }
-                account_asset_ids.append(account_asset) if profile_id else None
+                if profile_id:
+                    account_asset_ids.append(account_asset)
 
         if len(account_asset_ids) > 0:
             ids = self.env["account.asset"].create(account_asset_ids)
@@ -494,7 +494,7 @@ class FrImporter(AbstractImporter):
 
         chunk_number = (len(line_ids) // const.settings.ACCOUNT_ASSET_CHUNK_SIZE) + 1
         for i in range(chunk_number):
-            logger.debug("Account Asset Create Move {}/{}".format(i + 1, chunk_number))
+            logger.debug(f"Account Asset Create Move {i + 1}/{chunk_number}")
             account_ids = line_ids[
                 const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * i : const.settings.ACCOUNT_ASSET_CHUNK_SIZE

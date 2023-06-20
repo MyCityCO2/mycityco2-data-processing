@@ -10,44 +10,46 @@ from otools_rpc.external_api import Environment
 from mycityco2_data_process import const
 
 
-class AbstractImporter(ABC):
-    """Default class. This class is used to be the parent of the other Importer. You need to inherit this class in order to be able to create an importer"""
+# DECORATOR
+def timer(fn):
+    """This decorator allow you to get the time the function take to run. Not useful in prod, but it is in dev."""
 
-    # DECORATOR
-    def time(fn):
-        """This decorator allow you to get the time the function take to run. Not useful in prod, but it is in dev."""
+    def wrapper(self, *args, **kwargs):
+        start_time = time.perf_counter()
+        function = fn(self, *args, **kwargs)
+        end_time = time.perf_counter()
 
+        final_time = end_time - start_time
+
+        logger.debug(
+            f"{fn.__name__} took {final_time} secondes / {final_time / 60} minutes to execute"
+        )
+
+        return function
+
+    return wrapper
+
+
+def depends(*fields):
+    """Allow you to depends on certain object attribute, you can easily do @depends('city_ids', 'city_account_account_ids') and you will depends on multiple attribute."""
+
+    def decorator(fn):
         def wrapper(self, *args, **kwargs):
-            start_time = time.perf_counter()
-            function = fn(self, *args, **kwargs)
-            end_time = time.perf_counter()
+            for field in fields:
+                if not getattr(self, field, None):
+                    raise AttributeError(
+                        f"Fields '{field}' does not exist in '{fn.__name__}'."
+                    )
 
-            final_time = end_time - start_time
-
-            logger.debug(
-                f"{fn.__name__} took {final_time} secondes / {final_time / 60} minutes to execute"
-            )
-
-            return function
+            return fn(self, *args, **kwargs)
 
         return wrapper
 
-    def depends(*fields):
-        """Allow you to depends on certain object attribute, you can easily do @depends('city_ids', 'city_account_account_ids') and you will depends on multiple attribute."""
+    return decorator
 
-        def decorator(fn):
-            def wrapper(self, *args, **kwargs):
-                for field in fields:
-                    if not getattr(self, field, None):
-                        raise AttributeError(
-                            f"Fields '{field}' does not exist in '{fn.__name__}'."
-                        )
 
-                return fn(self, *args, **kwargs)
-
-            return wrapper
-
-        return decorator
+class AbstractImporter(ABC):
+    """Default class. This class is used to be the parent of the other Importer. You need to inherit this class in order to be able to create an importer"""
 
     def _create_by_chunk(
         self, model: str = "", vals_list: list = [], chunk: int = 1000
@@ -122,7 +124,7 @@ class AbstractImporter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_account_move_data(self, registry):
+    def get_account_move_data(self):
         """This function shall return the account.move data without any creation."""
         raise NotImplementedError()
 
@@ -152,9 +154,8 @@ class AbstractImporter(ABC):
 
         journals = self.env["account.journal"].create(journals_ids)
 
-        journals.read(fields=[k for k, v in journals_ids[0].items()]) if len(
-            journals_ids
-        ) else None
+        if len(journals_ids):
+            journals.read(fields=[k for k, v in journals_ids[0].items()])
 
         self.journals_ids = journals
 
@@ -383,7 +384,7 @@ class AbstractImporter(ABC):
 
         dataframe = dataframe.drop(columns=["category_id", "category_tuple"])
 
-        dataframe = dataframe[dataframe["category_name"] != False]
+        dataframe = dataframe[dataframe["category_name"] is not False]
         # Category
 
         logger.debug("Computing Carbon per habitant")

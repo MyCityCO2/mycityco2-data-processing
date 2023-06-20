@@ -27,6 +27,7 @@ flake8 = "^4"
 bandit = "^1"
 pre-commit = "^2"
 discord-webhook = "^1.1.0"
+pylint = "^2.17.4"
 
 [tool.poetry.scripts]
 mycityco2 = 'mycityco2_data_process.cli:cli'

@@ -60,10 +60,7 @@ def setup():
         logger.debug(
             "Notification will be send to : \n{}".format(
                 "\n".join(
-                    [
-                        "https://ntfy.sh/{}".format(topic)
-                        for topic in const.settings.NTFY_TOPICS
-                    ]
+                    [f"https://ntfy.sh/{topic}" for topic in const.settings.NTFY_TOPICS]
                 )
             )
         )
