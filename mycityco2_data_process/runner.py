@@ -135,7 +135,16 @@ def run(
         > **Etape 2.2** - Generation des plan comptable par villes : {_get_formated_text(importer.step2_2, minute=True)}
         > **Etape 2.3** - Creation des plan comptable par villes : {_get_formated_text(importer.step2_3, minute=True)}
     **Etape 3** - Importation comptabilite : {_get_formated_text(step3_elapsed_time, minute=True)}
+        > **Etape 3.1** - Requetes API : {_get_formated_text(importer.step3_1, minute=True)}
+        > **Etape 3.2** - Generation comptable par villes : {_get_formated_text(importer.step3_1, minute=True)}
+        > **Etape 3.3** - Envoye des donnees (Odoo) : {_get_formated_text(importer.step3_1, minute=True)}
     **Etape 4** - Creation ammortissement : {_get_formated_text(step4_elapsed_time, minute=True)}
+        > **Etape 4.1** - Generation des categories d'amortissement : {_get_formated_text(importer.step4_1, minute=True)}
+        > **Etape 4.2** - Creation des categories d'amortissement (Odoo) : {_get_formated_text(importer.step4_2, minute=True)}
+        > **Etape 4.3** - Generation des amortissement : {_get_formated_text(importer.step4_3, minute=True)}
+        > **Etape 4.4** - Creation des amortissement (Odoo) : {_get_formated_text(importer.step4_4, minute=True)}
+        > **Etape 4.5** - Validation des amortissement (Odoo) : {_get_formated_text(importer.step4_5, minute=True)}
+        > **Etape 4.6** - Creation des pieces comptable pour les amortissement : {_get_formated_text(importer.step4_6, minute=True)}
     **Etape 5** - Exporting des donnees et traitement : {_get_formated_text(step5_elapsed_time, minute=True)}
 
     **Temps total** : {_get_formated_text(total_elapsed_time, minute=True)}
