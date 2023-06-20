@@ -2,6 +2,7 @@ import csv
 import datetime
 import fnmatch
 import json
+import time
 
 import requests
 import xmltodict
@@ -10,7 +11,7 @@ from loguru import logger
 
 from mycityco2_data_process import const
 
-from .base import AbstractImporter
+from .base import AbstractImporter, depends
 
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
@@ -78,7 +79,7 @@ class FrImporter(AbstractImporter):
     def currency_name(self):
         return "EUR"
 
-    @AbstractImporter.depends("rename_fields")
+    @depends("rename_fields")
     def get_cities(self):
         data = self._dataset
 
@@ -110,7 +111,7 @@ class FrImporter(AbstractImporter):
 
         return final_data
 
-    @AbstractImporter.depends("city_ids")
+    @depends("city_ids")
     def get_journal_data(self):
         journals_ids = []
 
@@ -136,13 +137,15 @@ class FrImporter(AbstractImporter):
         return journals_ids
 
     def gen_account_account_data(self):
+        self.step2_1 = 0
+        step2_1_start_timer = time.perf_counter()
         nomens = NOMENCLATURE
-        logger.debug(f"Generating {', '.join(nomens)} account set")
+        logger.debug(f"{self._db} - Generating {', '.join(nomens)} account set")
 
         final_accounts = {}
 
         for nomen in nomens:
-            logger.debug(f"Generating {nomen} account set")
+            logger.debug(f"{self._db} - Generating {nomen} account set")
             nomen_param = NOMENCLATURE_PARAMS.get(nomen)
             if not nomen_param:
                 raise AttributeError(
@@ -171,8 +174,14 @@ class FrImporter(AbstractImporter):
                 )
             final_accounts[nomen] = accounts
 
+        step2_1_end_timer = time.perf_counter()
+
+        self.step2_1 += step2_1_end_timer - step2_1_start_timer
+
         self.account_account_ids = final_accounts
-        logger.debug(f"All {', '.join(nomens)} account set has been generated")
+        logger.debug(
+            f"{self._db} - All {', '.join(nomens)} account set has been generated"
+        )
         return final_accounts
 
     def gen_carbon_factor(self):
@@ -193,10 +202,14 @@ class FrImporter(AbstractImporter):
 
         return self.carbon_factor
 
-    @AbstractImporter.depends("city_ids")
+    @depends("city_ids")
     def get_account_account_data(self):
-        logger.debug("Generating account")
+        logger.debug(f"{self._db} - Generating account")
         accounts = self.gen_account_account_data()
+
+        self.step2_2 = 0
+
+        step2_2_start_timer = time.perf_counter()
 
         cities = self.city_ids
 
@@ -205,7 +218,7 @@ class FrImporter(AbstractImporter):
         account_account_ids = []
 
         for city in cities:
-            logger.debug(f"Generating account set for {city.name}")
+            logger.debug(f"{self._db} - Generating account set for {city.name}")
             city_id = city.id
             city_registry = city.company_registry
 
@@ -256,13 +269,15 @@ class FrImporter(AbstractImporter):
                         break
 
                 account_account_ids.append(account_id)
+        step2_2_end_timer = time.perf_counter()
 
+        self.step2_2 = step2_2_end_timer - step2_2_start_timer
         return account_account_ids
 
-    @AbstractImporter.depends(
-        "city_ids", "journals_ids", "city_account_account_ids", "currency_id"
-    )
+    @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
+        self.step3_1 = self.step3_2 = self.step3_3 = 0
+
         account_journal_dict = {}
         for journal in self.journals_ids:
             if journal.code != "BUD":
@@ -286,7 +301,9 @@ class FrImporter(AbstractImporter):
                 city_account_move_line_ids = []
                 date = f"{year}-12-31"
 
-                logger.debug(f"Generating account move set for {city.name} for {year}")
+                logger.debug(
+                    f"{self._db} - Generating account move set for {city.name} for {year}"
+                )
 
                 account_move_bud_id = self.create_account_move(
                     {
@@ -305,8 +322,10 @@ class FrImporter(AbstractImporter):
                 refine_parameter = "cbudg:1"
                 if year <= 2015:
                     refine_parameter = "budget:BP"
-
+                step3_1_start_timer = time.perf_counter()
                 url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
+                step3_1_end_timer = time.perf_counter()
+                self.step3_1 += step3_1_end_timer - step3_1_start_timer
 
                 data = requests.get(
                     url.format(year, city.company_registry, refine_parameter)
@@ -317,6 +336,7 @@ class FrImporter(AbstractImporter):
                 ):
                     continue
 
+                step3_2_start_timer = time.perf_counter()
                 for i in data:
 
                     plan_identifier = account_dict.get(
@@ -346,16 +366,23 @@ class FrImporter(AbstractImporter):
                             line_id_bud | {"debit": debit_bud, "credit": 0.0}
                         )
 
-                logger.debug(f"Sending data for {city.name} for {year}")
+                step3_2_end_timer = time.perf_counter()
+
+                self.step3_2 += step3_2_end_timer - step3_2_start_timer
+
+                step3_3_start_timer = time.perf_counter()
+                logger.debug(f"{self._db} - Sending data for {city.name} for {year}")
                 account_move_lines_ids = self.env["account.move.line"].create(
                     city_account_move_line_ids
                 )
-
                 if len(city_account_move_line_ids):
                     account_move_lines_ids.read(
                         fields=[k for k, v in city_account_move_line_ids[0].items()]
                     )
 
+                step3_3_end_timer = time.perf_counter()
+
+                self.step3_3 += step3_3_end_timer - step3_3_start_timer
                 if not self.account_move_line_ids:
                     self.account_move_line_ids = account_move_lines_ids
                 else:
@@ -365,6 +392,8 @@ class FrImporter(AbstractImporter):
         return self.account_move_line_ids
 
     def account_asset_create_categories(self):
+        self.step4_1 = self.step4_2 = 0
+
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
@@ -390,6 +419,7 @@ class FrImporter(AbstractImporter):
                 if row.get("FE") and row.get("FE") != "#N/A":
                     carbon_id = self.env.ref(row.get("FE"))
                 for city in cities:
+                    step4_1_start_timer = time.perf_counter()
                     account_account_id = account_account_dict.get(
                         f"{city.id}-{row['Code']}"
                     )
@@ -418,6 +448,11 @@ class FrImporter(AbstractImporter):
 
                         journal_id = account_journal_dict[city.id]
 
+                        step4_1_end_timer = time.perf_counter()
+
+                        self.step4_1 += step4_1_end_timer - step4_1_start_timer
+                        step4_2_start_timer = time.perf_counter()
+
                         cat = self.env["account.asset.profile"].create(
                             {
                                 "company_id": city.id,
@@ -429,6 +464,8 @@ class FrImporter(AbstractImporter):
                                 "journal_id": journal_id.id,
                             }
                         )
+                        step4_2_end_timer = time.perf_counter()
+                        self.step4_2 += step4_2_end_timer - step4_2_start_timer
 
                         account_asset_categories[account_account_id.id] = cat.id
 
@@ -437,8 +474,11 @@ class FrImporter(AbstractImporter):
         return self.account_asset_categories
 
     def populate_account_asset(self):
+        self.step4_3 = self.step4_4 = self.step4_5 = 0
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset
+
+        step4_3_start_timer = time.perf_counter()
 
         categories = self.account_asset_categories
 
@@ -464,23 +504,34 @@ class FrImporter(AbstractImporter):
                 if profile_id:
                     account_asset_ids.append(account_asset)
 
+        step4_3_end_timer = time.perf_counter()
+
+        self.step4_3 += step4_3_end_timer - step4_3_start_timer
+
         if len(account_asset_ids) > 0:
+            step4_4_start_timer = time.perf_counter()
             ids = self.env["account.asset"].create(account_asset_ids)
-
             ids.read(fields=[k for k, v in account_asset_ids[0].items()])
+            step4_4_end_timer = time.perf_counter()
 
-            # for index, account_asset in enumerate(account_asset_ids):
-            #     account_asset["id"] = ids.ids[index]
+            self.step4_4 += step4_4_end_timer - step4_4_start_timer
 
+            step4_5_start_timer = time.perf_counter()
             self.env["account.asset"].browse(ids.ids).validate()
+            step4_5_end_timer = time.perf_counter()
+
+            self.step4_5 += step4_5_end_timer - step4_5_start_timer
 
         self.account_asset = account_asset_ids
 
         return self.account_asset
 
     def account_asset_create_move(self):
+        self.step4_6 = 0
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return False
+
+        step4_6_start_timer = time.perf_counter()
 
         account_asset_line_ids = self.env["account.asset.line"].search(
             [
@@ -494,12 +545,18 @@ class FrImporter(AbstractImporter):
 
         chunk_number = (len(line_ids) // const.settings.ACCOUNT_ASSET_CHUNK_SIZE) + 1
         for i in range(chunk_number):
-            logger.debug(f"Account Asset Create Move {i + 1}/{chunk_number}")
+            logger.debug(
+                f"{self._db} - Account Asset Create Move {i + 1}/{chunk_number}"
+            )
             account_ids = line_ids[
                 const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * i : const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * (i + 1)
             ]
             self.env["account.asset.line"].browse(account_ids).create_move()
+
+        step4_6_end_timer = time.perf_counter()
+
+        self.step4_6 += step4_6_end_timer - step4_6_start_timer
 
         return True
