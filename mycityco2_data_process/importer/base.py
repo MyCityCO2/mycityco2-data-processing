@@ -208,7 +208,8 @@ class AbstractImporter(ABC):
 
         self.get_account_move_data()
 
-        self.account_move_ids.action_post()
+        # TODO: Search more if we need to post or not the account.move
+        # self.account_move_ids.action_post()
 
     def export_data(self):
         co2_categories = [

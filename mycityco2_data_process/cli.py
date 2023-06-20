@@ -18,7 +18,7 @@ instance = list(range(0, instance_number * instance_limit, instance_limit))
 def run():
     start_time = time.perf_counter()
     # city = ["Fillière"]
-    # city = ["La Roche-sur-Foron"]
+    # city = ["Scionzier"]
     departement = 74
     func = functools.partial(
         runner.init,

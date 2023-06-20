@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # ENV_DB: str = "bch-foron-departement"
     # ENV_URL: str = "http://172.25.0.3:8069"
     # ENV_TEMPLATE_DB: str = 'template'
-    ENV_DB: str = "temp-departement-cli"
+    ENV_DB: str = "temp-departement-cli-testing"
     ENV_USERNAME: str = "__system__"
     # todo: add validator and make it optional
     ENV_PASSWORD: str

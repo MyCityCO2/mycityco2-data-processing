@@ -24,7 +24,7 @@ def send_discord(
     link: str = None,
 ):
     webhook_url = "https://discord.com/api/webhooks/1116702695630311497/7QY_2Il86MTi-E8206B7bS-UAKnDy4G5vyprFTYKja405RpCQxBJAl6rbVSAyiFfWB-b"
-    webhook = DiscordWebhook(url=webhook_url)
+    webhook = DiscordWebhook(url=webhook_url, username=username)
 
     embed = DiscordEmbed(title=title, color=16712192, description=msg)
 
@@ -53,7 +53,7 @@ def setup():
         lambda msg: send_discord(msg),
         format="{message}",
         colorize=False,
-        level="CRITICAL",
+        level="ERROR",  # POST message to discord when error
     )
     # NTFY
     if const.settings.NTFY_TOGGLE:

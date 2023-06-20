@@ -7,7 +7,11 @@ MyCityCO2 is an project from [Open-Net](https://open-net.ch). This project is ai
 ## How to start
 Clone the repository
 ```bash
-git clone xxx
+git clone https://github.com/MyCityCO2/mycityco2-data-processing.git
+```
+or
+```bash
+pip install git+https://github.com/MyCityCO2/mycityco2-data-processing
 ```
 
 then configure you're importer in the const.settings.py file. Don't forget you're RPC url. Now you can start the program.
