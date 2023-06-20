@@ -22,7 +22,7 @@ def timer(fn):
         final_time = end_time - start_time
 
         logger.debug(
-            f"{fn.__name__} took {final_time} secondes / {final_time / 60} minutes to execute"
+            f"{self._db} - {fn.__name__} took {final_time} secondes / {final_time / 60} minutes to execute"
         )
 
         return function
@@ -63,7 +63,7 @@ class AbstractImporter(ABC):
         chunk_number = (len(vals_list) // chunk) + 1
         for i in range(chunk_number):
             logger.debug(
-                f"Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
+                f"{self._db} - Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
             )
             vals = vals_list[chunk * i : chunk * (i + 1)]
             created_record = self.env[model].create(vals)
@@ -72,7 +72,7 @@ class AbstractImporter(ABC):
 
             vals_list_id |= created_record
 
-        logger.debug(f"All {model} chunk has been created")
+        logger.debug(f"{self._db} - All {model} chunk has been created")
         return vals_list_id
 
     def __init__(self, env):
@@ -131,6 +131,8 @@ class AbstractImporter(ABC):
     @depends("external_layout_id", "user_ids", "currency_id")
     def cities_data_list(self):
         """This function use our get_cities data to parse our old data to newer one."""
+        self.step1_1 = 0
+        step1_1_start_timer = time.perf_counter()
         cities = self.get_cities()
 
         res_city_vals_list = [
@@ -145,6 +147,9 @@ class AbstractImporter(ABC):
             }
             for city in cities
         ]
+        step1_1_end_timer = time.perf_counter()
+
+        self.step1_1 += step1_1_end_timer - step1_1_start_timer
 
         return res_city_vals_list
 
@@ -165,11 +170,18 @@ class AbstractImporter(ABC):
         """This function is only there to create all our cities_data_list in Odoo. One city correspond to one Odoo company."""
         city_vals_list = self.cities_data_list()
 
+        self.step1_2 = 0
+
+        step1_2_start_timer = time.perf_counter()
+
         cities = self._create_by_chunk(
             "res.company", city_vals_list, const.settings.CITY_CHUNK_SIZE
         )
 
         self.city_ids = cities
+        step1_2_end_timer = time.perf_counter()
+
+        self.step1_2 += step1_2_end_timer - step1_2_start_timer
 
         return cities
 
@@ -177,11 +189,17 @@ class AbstractImporter(ABC):
         """Populate the account data with the data in the chart."""
         account_account_ids = self.get_account_account_data()
 
+        self.step2_3 = 0
+        step2_3_start_timer = time.perf_counter()
+
         accounts = self._create_by_chunk(
             "account.account", account_account_ids, const.settings.ACCOUNT_CHUNK_SIZE
         )
 
         self.city_account_account_ids = accounts
+        step2_3_end_timer = time.perf_counter()
+
+        self.step2_3 = step2_3_end_timer - step2_3_start_timer
 
         return accounts
 
@@ -302,11 +320,11 @@ class AbstractImporter(ABC):
 
         WHERE EXTRACT ('Year' FROM lines.date) > 2015;
         """
-        logger.debug("Extracting data from ODOO, using SQL")
+        logger.debug(f"{self._db} - Extracting data from ODOO, using SQL")
         dataframe = pandas.read_sql_query(query, connection)
 
         # Habitant
-        logger.debug("Matching habitant/postal code to city")
+        logger.debug(f"{self._db} - Matching habitant/postal code to city")
         siren_to_habitant = pandas.read_csv(
             f"{const.settings.PATH.as_posix()}/data/fr/siren.csv"
         )
@@ -353,7 +371,7 @@ class AbstractImporter(ABC):
         # Habitant
 
         # Category
-        logger.debug("Matching Category to account.account")
+        logger.debug(f"{self._db} - Matching Category to account.account")
 
         def matching(code):
             for row in coa_condition:
@@ -382,12 +400,25 @@ class AbstractImporter(ABC):
         dataframe["category_code"] = dataframe["category_tuple"].apply(unpack_code)
         dataframe["category_name"] = dataframe["category_tuple"].apply(unpack_name)
 
-        dataframe = dataframe.drop(columns=["category_id", "category_tuple"])
+        dataframe = dataframe.drop(
+            columns=[
+                "category_id",
+                "category_tuple",
+                "Reg_com",
+                "dep_com",
+                "siren",
+                "insee",
+                "nom_com",
+                "ptot_2023",
+                "pcap_2023",
+            ]
+        )
+        dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
 
-        dataframe = dataframe[dataframe["category_name"] is not False]
+        dataframe = dataframe[dataframe["category_name"] != False]
         # Category
 
-        logger.debug("Computing Carbon per habitant")
+        logger.debug(f"{self._db} - Computing Carbon per habitant")
         # Carbon Factor
         # dataframe['entry_carbon_kgco2e_per_hab'] = dataframe['entry_carbon_kgco2e']/dataframe['habitant']
         # Carbon Factor
@@ -396,10 +427,12 @@ class AbstractImporter(ABC):
 
         # print(dataframe)
 
-        logger.debug("Sorting dataframe")
+        logger.debug(f"{self._db} - Sorting dataframe")
         dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
 
-        logger.debug(f"Exporting dataframe to 'data/temp_file/{self._db}.csv'")
+        logger.debug(
+            f"{self._db} - Exporting dataframe to 'data/temp_file/{self._db}.csv'"
+        )
         dataframe.to_csv(
             f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
             index=False,
