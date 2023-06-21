@@ -1,6 +1,7 @@
 import fnmatch
 import time
 from abc import ABC, abstractmethod
+from typing import Any
 
 import pandas
 import psycopg2
@@ -78,21 +79,21 @@ class AbstractImporter(ABC):
     def __init__(self, env):
         """Initialize the object from an Environment."""
         self.env: Environment = env
-        self.user_ids: any = self.env["res.users"].search_read([])
-        self.currency_id: any = self.env["res.currency"].search_read(
+        self.user_ids: Any = self.env["res.users"].search_read([])
+        self.currency_id: Any = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
         )
-        self.external_layout_id: any = self.env.ref("web.external_layout_standard")
+        self.external_layout_id: Any = self.env.ref("web.external_layout_standard")
 
-        self.city_ids: any = None
-        self.city_account_account_ids: any = None
-        self.account_account_ids: any = None
-        self.account_move_ids: any = None
-        self.account_move_line_ids: any = None
+        self.city_ids: Any = None
+        self.city_account_account_ids: Any = None
+        self.account_account_ids: Any = None
+        self.account_move_ids: Any = None
+        self.account_move_line_ids: Any = None
         self.carbon_factor: list[dict[str, str, str]] = None
-        self.carbon_factor_id: list[dict[str, any]] = {}
+        self.carbon_factor_id: list[dict[str, Any]] = {}
         self.account_asset_categories: dict = {}
-        self.account_asset: any = None
+        self.account_asset: Any = None
 
     @abstractmethod
     def source_name(self):
