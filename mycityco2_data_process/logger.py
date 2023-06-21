@@ -1,25 +1,14 @@
 import sys
 
-import requests
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from loguru import logger
 
 from mycityco2_data_process import const
 
 
-def send_ntfy(msg: str, title: str = const.settings.NTFY_TITLE):
-    if const.settings.NTFY_TOGGLE:
-        for topic in const.settings.NTFY_TOPICS:
-            requests.post(
-                const.settings.NTFY_SERVER + topic,
-                data=msg.encode(encoding="utf-8"),
-                headers={"Title": title, "Tags": "incoming_envelope"},
-            )
-
-
 def send_discord(
     msg: str,
-    title: str = const.settings.NTFY_TITLE,
+    title: str = "MyCityCO2 Importer",
     username: str = "Importer Script",
     link: str = None,
 ):
@@ -47,7 +36,6 @@ def setup():
         level="DEBUG",
     )
     # logger.add(sys.stdout, enqueue=True, colorize=True, format=const.settings.LOGORU_FORMAT, level=const.settings.LOGURU_LEVEL)
-    # logger.add(lambda msg: send_ntfy(msg), format="{message}", colorize=False, level=const.settings.NTFY_LEVEL)
 
     logger.add(
         lambda msg: send_discord(msg),
@@ -55,14 +43,5 @@ def setup():
         colorize=False,
         level="CRITICAL",  # POST message to discord when error
     )
-    # NTFY
-    if const.settings.NTFY_TOGGLE:
-        logger.debug(
-            "Notification will be send to : \n{}".format(
-                "\n".join(
-                    [f"https://ntfy.sh/{topic}" for topic in const.settings.NTFY_TOPICS]
-                )
-            )
-        )
 
     logger.level("FTRACE", no=3, color="<blue>")

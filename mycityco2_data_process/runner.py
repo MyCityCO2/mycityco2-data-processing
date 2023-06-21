@@ -17,7 +17,7 @@ def run(
     env,
     dbname,
     chunksize,
-    instance_reste,
+    instance_remain,
     instance_number,
     departement: int = 74,
     dataset: list = [],
@@ -34,7 +34,7 @@ def run(
 
     else:
         dataset = dataset[
-            offset * chunksize : (offset + 1) * chunksize + instance_reste
+            offset * chunksize : (offset + 1) * chunksize + instance_remain
         ]
 
     importer = FrImporter(
@@ -45,9 +45,6 @@ def run(
         departement=departement,
         dataset=dataset,
     )
-    # importer = FrImporter(limit=instance_limit, env=env, offset=offset, db=dbname, city_name=["Mégevette", "Onnion", "Saint-Jean-de-Tholome", "Saint-Jeoire", "La Tour", "Ville-en-Sallaz", "Viuz-en-Sallaz", "La Roche-sur-Foron", "Allonzier-la-Caille", "Amancy", "Andilly", "Arbusigny", "Cercier", "Cernex", "La Chapelle-Rambaud", "Copponex", "Cornier", "Cruseilles", "Cuvat", "Etaux", "Menthonnex-en-Bornes", "Monnetier-Mornex", "La Muraz", "Nangy", "Pers-Jussy", "Reignier-Ésery", "Saint-Blaise", "Saint-Laurent", "Saint-Sixt", "Le Sappey", "Scientrier", "Villy-le-Bouveret", "Villy-le-Pelloux", "Vovray-en-Bornes", "Reignier-Ésery", "Arbusigny", "Fillinges", "Monnetier-Mornex", "La Muraz", "Nangy", "Pers-Jussy", "Scientrier", "Cruseilles", "Allonzier-la-Caille", "Andilly", "Cercier", "Cernex", "Copponex", "Menthonnex-en-Bornes", "Le Sappey", "Saint-Blaise", "Villy-le-Bouveret", "Vovray-en-Bornes", "Bonneville", "Arenthon", "Ayse", "Brizon", "Contamine-sur-Arve", "Faucigny", "Fillinges", "Glières-Val-de-Borne", "Marcellaz", "Marignier", "Mégevette", "Onnion", "Peillonnex", "Saint-Jean-de-Tholome", "Saint-Jeoire", "Saint-Pierre-en-Faucigny", "La Tour", "Ville-en-Sallaz", "Viuz-en-Sallaz", "Vougy", "Boëge", "Bogève", "Burdignin", "Habère-Lullin", "Habère-Poche", "Saxel", "Saint-André-de-Boëge", "Villard"])
-    # importer = FrImporter(limit=instance_limit, env=env, offset=offset, db=dbname, city_name=["La Roche-sur-Foron"])
-    # importer = FrImporter(limit=instance_limit, env=env, offset=offset, db=dbname)
 
     # only_export = True
     only_export = False
@@ -87,7 +84,7 @@ def run(
         const.settings.ERROR_COUNTER += 1
         utils.change_superuser_state(dbname, False)
 
-    # importer.gen_carbon_factor()
+    # importer.gen_carbon_factors()
 
     # logger.error(importer.carbon_factor_id)
 
@@ -189,7 +186,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
     utils.change_superuser_state(dbname, True)
 
     env = CustomEnvironment(dbname=dbname).env
-    instance_reste = len(dataset) % instance_number
+    instance_remain = len(dataset) % instance_number
     chunksize = len(dataset) // instance_number
 
     try:
@@ -200,7 +197,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
             env.env,
             dbname,
             chunksize,
-            instance_reste,
+            instance_remain,
             instance_number,
             departement=departement,
             dataset=dataset,

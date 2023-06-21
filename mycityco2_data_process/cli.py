@@ -15,6 +15,14 @@ instance = list(range(0, instance_number * instance_limit, instance_limit))
 
 
 @cli.command()
+def test(arg, **kwargs):
+    print("hi" + str(arg))
+    for args in kwargs:
+        print(args)
+    raise typer.Abort()
+
+
+@cli.command()
 def run():
     start_time = time.perf_counter()
     city = ["Nancy-sur-Cluses"]
@@ -37,8 +45,7 @@ def run():
         logger.info("Ctrl-c entered. Exiting")
 
     # except Exception as e:
-    #     print(e)
-    #     logger.error(e)
+    #     raise typer.Abort()
 
     # Merging csv #
     # logger.info("Merging CSV")

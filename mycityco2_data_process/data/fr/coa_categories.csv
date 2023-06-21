@@ -1,0 +1,11 @@
+id,code,name
+1,MAI,Maintenance
+2,CON,Construction
+3,INS,Installations
+4,TRP,Transports
+5,FLU,Fluides (Energie, Eau...)
+6,SER,Services
+7,FOU,Fournitures
+8,OTH,Autres
+9,ALI,Alimentation
+10,TAX,Impotsetcotisations

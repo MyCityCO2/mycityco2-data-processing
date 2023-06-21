@@ -17,12 +17,6 @@ class Settings(BaseSettings):
     LOGORU_FORMAT: str = "<green>{time:YYYY-MM-DD at HH:mm:ss}</green> <level>{level}</level> - {message}"
     LOGURU_LEVEL: str = "DEBUG"
 
-    NTFY_TOGGLE: bool = False
-    NTFY_LEVEL: str = "ERROR"
-    NTFY_TOPICS: list[str] = ["opennetabo"]
-    NTFY_TITLE: str = "MyCityCO2 Importer"
-    NTFY_SERVER: str = "https://ntfy.sh/"
-
     ENV_DELETE_DB_TOGGLE: bool = True
 
     ENV_URL: Optional[str]
@@ -38,7 +32,7 @@ class Settings(BaseSettings):
 
     CARBON_FILE: str = (_path / "data/fr/fr_mapping_coa_exiobase.csv").as_posix()
 
-    ACCOUNT_ASSET_TOGGLE: bool = True
+    ACCOUNT_ASSET_TOGGLE: bool = False
     ACCOUNT_ASSET_FILE: str = (
         _path / "data/fr/fr_mapping_immo_exiobase.csv"
     ).as_posix()
@@ -47,13 +41,15 @@ class Settings(BaseSettings):
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
 
     SQL_PORT = 666
+    # TODO: Operation mode, find other way
     SQL_LOCAL = False
 
     ERROR_COUNTER = 0
 
     # Method
+    @classmethod
     @root_validator()
-    def prevent_none(self, fields):
+    def prevent_none(cls, fields):
         for k, v in fields.items():
             if v is None:
                 raise ValueError(f"The fields '{k}' must not be None")
