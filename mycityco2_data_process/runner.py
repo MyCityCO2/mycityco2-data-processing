@@ -84,7 +84,7 @@ def run(
         const.settings.ERROR_COUNTER += 1
         utils.change_superuser_state(dbname, False)
 
-    # importer.gen_carbon_factor()
+    # importer.gen_carbon_factors()
 
     # logger.error(importer.carbon_factor_id)
 

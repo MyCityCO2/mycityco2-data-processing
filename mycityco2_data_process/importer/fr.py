@@ -14,6 +14,22 @@ from mycityco2_data_process import const
 
 from .base import AbstractImporter, depends
 
+NOMENCLATURE_PARAMS: dict = {
+    "M14": "M14/M14_COM_SUP3500",
+    "M14A": "M14/M14_COM_INF500",
+    "M57": "M57/M57",
+}
+NOMENCLATURE: list = list(NOMENCLATURE_PARAMS.keys())
+
+CHART_OF_ACCOUNT_URL: str = (
+    "http://odm-budgetaire.org/composants/normes/2021/{}/planDeCompte.xml"
+)
+
+FR_PATH_FILE = const.settings.PATH / "data" / "fr"
+
+COA_CONDITION_FILE = FR_PATH_FILE / "coa_condition.csv"
+COA_CATEGORIES_FILE = FR_PATH_FILE / "coa_categories.csv"
+
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
     value_list = dictionnary.get("Compte")
@@ -37,33 +53,17 @@ def _get_chart_account(dictionnary: dict, result_list: list = []):
     return result_list
 
 
-NOMENCLATURE_PARAMS: dict = {
-    "M14": "M14/M14_COM_SUP3500",
-    "M14A": "M14/M14_COM_INF500",
-    "M57": "M57/M57",
-}
-NOMENCLATURE: tuple = list(NOMENCLATURE_PARAMS.keys())
-
-CHART_OF_ACCOUNT_URL: str = (
-    "http://odm-budgetaire.org/composants/normes/2021/{}/planDeCompte.xml"
-)
-
-
 class FrImporter(AbstractImporter):
-    # TODO: Remove city_name argument
     def __init__(
         self,
         limit: int = 50,
         offset: int = 0,
         departement: int = 74,
         env=None,
-        city_name=[],
         db=const.settings.ENV_DB,
         dataset: list = [],
     ):
-        # TODO: remove db add to super
-        super().__init__(env)
-        self._db = db
+        super().__init__(env=env, db=db)
         self.rename_fields: dict = {"com_name": "name", "com_siren_code": "district"}
         self._dataset = dataset
         self._city_amount: int = 0
@@ -90,11 +90,9 @@ class FrImporter(AbstractImporter):
         for city in data:
             city = city.get("fields")
 
-            # DEV
-            if city.get("com_name") in const.settings.SKIPPED_CITY:
-                continue
-
             final_data.append({v: city.get(k) for k, v in self.rename_fields.items()})
+
+        self._city_amount += len(final_data)
 
         return final_data
 
@@ -144,7 +142,6 @@ class FrImporter(AbstractImporter):
             account = data.get("Nomenclature").get("Nature").get("Comptes")
             accounts = _get_chart_account(account, [])
 
-            # TODO: Try another method
             if not any(dictionnary["code"] == "65888" for dictionnary in accounts):
                 accounts.append(
                     {
@@ -164,8 +161,8 @@ class FrImporter(AbstractImporter):
         )
         return final_accounts
 
-    # TODO: Do list comprehension, make it plural
-    def gen_carbon_factor(self):
+    # TODO: Do list comprehension
+    def gen_carbon_factors(self):
         if not self.carbon_factor:
             categories = []
             with open(const.settings.CARBON_FILE, newline="") as csvfile:
@@ -198,10 +195,10 @@ class FrImporter(AbstractImporter):
         for city in self.city_ids:
             logger.debug(f"{self._db} - Generating account set for {city.name}")
 
-            # TODO: Add explain comment
-            refine_parameter = "cbudg:1"
-            if const.settings.YEAR[-1] <= 2015:
-                refine_parameter = "budget:BP"
+            # Hardcoded year because the API change filter type on 2015
+            refine_parameter = (
+                "budget:BP" if const.settings.YEAR[-1] <= 2015 else "cbudg:1"
+            )
 
             res_nomen = requests.get(
                 url.format(
@@ -231,7 +228,7 @@ class FrImporter(AbstractImporter):
                     "account_type": const.settings.DEFAULT_ACCOUNT_TYPE,
                 }
 
-                for account in self.gen_carbon_factor():
+                for account in self.gen_carbon_factors():
                     if fnmatch.fnmatch(code, account.get("condition")):
                         account_id |= {
                             "use_carbon_value": True,
@@ -293,8 +290,7 @@ class FrImporter(AbstractImporter):
                     ]
                 )
 
-                # TODO: add explain comment, and one liner the other one
-
+                # Hardcoded year because the API change filter type on 2015
                 refine_parameter = "budget:BP" if year <= 2015 else "cbudg:1"
 
                 step3_1_start_timer = time.perf_counter()
@@ -522,7 +518,7 @@ class FrImporter(AbstractImporter):
                 * i : const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * (i + 1)
             ]
-            self.env["account.asset.line"].browse(account_ids).create_move()
+            self.env["account.asset.line"].browse(account_ids.ids).create_move()
 
         step4_6_end_timer = time.perf_counter()
 
@@ -531,60 +527,17 @@ class FrImporter(AbstractImporter):
         return True
 
     def export_data(self):
+        co2_categories = []
+        with open(COA_CATEGORIES_FILE.as_posix()) as f:
+            co2_categories = list(sorted(csv.DictReader(f), key=lambda k: k["id"]))
 
-        # TODO: Data to CSV
-        co2_categories = [
-            {"id": 1, "code": "MAI", "name": "Maintenance"},
-            {"id": 2, "code": "CON", "name": "Construction"},
-            {"id": 3, "code": "INS", "name": "Installations"},
-            {"id": 4, "code": "TRP", "name": "Transports"},
-            {"id": 5, "code": "FLU", "name": "Fluides (Energie, Eau...)"},
-            {"id": 6, "code": "SER", "name": "Services"},
-            {"id": 7, "code": "FOU", "name": "Fournitures"},
-            {"id": 8, "code": "OTH", "name": "Autres"},
-            {"id": 9, "code": "ALI", "name": "Alimentation"},
-            {"id": 10, "code": "TAX", "name": "Impots et cotisations"},
-        ]
+        coa_condition = []
+        with open(COA_CONDITION_FILE.as_posix()) as f:
+            coa_condition = list(
+                sorted(csv.DictReader(f), key=lambda k: k["rule_order"])
+            )
 
-        # TODO: Data to CSV
-        coa_condition = sorted(
-            [
-                {"condition": "6*", "category_id": 8, "rule_order": 999},
-                {"condition": "66*", "category_id": 6, "rule_order": 200},
-                {"condition": "61*", "category_id": 6, "rule_order": 200},
-                {"condition": "62*", "category_id": 6, "rule_order": 200},
-                {"condition": "64*", "category_id": 10, "rule_order": 200},
-                {"condition": "63*", "category_id": 10, "rule_order": 200},
-                {"condition": "615*", "category_id": 1, "rule_order": 100},
-                {"condition": "60622*", "category_id": 4, "rule_order": 100},
-                {"condition": "625*", "category_id": 4, "rule_order": 100},
-                {"condition": "6811.21*", "category_id": 2, "rule_order": 100},
-                {"condition": "61551*", "category_id": 4, "rule_order": 100},
-                {"condition": "624*", "category_id": 4, "rule_order": 100},
-                {"condition": "6064*", "category_id": 8, "rule_order": 100},
-                {"condition": "6065*", "category_id": 8, "rule_order": 100},
-                {"condition": "6067*", "category_id": 8, "rule_order": 100},
-                {"condition": "6068*", "category_id": 8, "rule_order": 100},
-                {"condition": "60621*", "category_id": 5, "rule_order": 100},
-                {"condition": "6063*", "category_id": 1, "rule_order": 100},
-                {"condition": "6811.204*", "category_id": 2, "rule_order": 50},
-                {"condition": "6811.203*", "category_id": 6, "rule_order": 50},
-                {"condition": "6811.215*", "category_id": 3, "rule_order": 50},
-                {"condition": "6811.202*", "category_id": 6, "rule_order": 50},
-                {"condition": "6042*", "category_id": 6, "rule_order": 50},
-                {"condition": "6574", "category_id": 6, "rule_order": 50},
-                {"condition": "60623", "category_id": 9, "rule_order": 10},
-                {"condition": "60613", "category_id": 5, "rule_order": 10},
-                {"condition": "6061*", "category_id": 5, "rule_order": 10},
-                {"condition": "60612", "category_id": 5, "rule_order": 10},
-                {"condition": "6811.2182", "category_id": 4, "rule_order": 10},
-            ],
-            key=lambda k: k["rule_order"],
-        )
-
-        # TODO: with and close connection
-
-        connection = (
+        postegres = (
             psycopg2.connect(
                 database=self._db,
                 port=const.settings.SQL_PORT,
@@ -625,95 +578,98 @@ class FrImporter(AbstractImporter):
 
         WHERE EXTRACT ('Year' FROM lines.date) > 2015;
         """
-        logger.debug(f"{self._db} - Extracting data from ODOO, using SQL")
-        dataframe = pandas.read_sql_query(query, connection)
 
-        # TODO: add try catch
-        # Habitant
-        logger.debug(f"{self._db} - Matching habitant/postal code to city")
-        siren_to_habitant = pandas.read_csv(
-            f"{const.settings.PATH.as_posix()}/data/fr/siren.csv"
-        )
-        # todo : test .drop_duplicates()
-        siren_to_postal = pandas.read_csv(
-            f"{const.settings.PATH.as_posix()}/data/fr/postal.csv"
-        ).drop_duplicates()
+        with postegres as connection:
+            logger.debug(f"{self._db} - Extracting data from ODOO, using SQL")
+            dataframe = pandas.read_sql_query(query, connection)
 
-        siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
+            # Habitant
+            logger.debug(f"{self._db} - Matching habitant/postal code to city")
+            try:
+                siren_to_habitant = pandas.read_csv(
+                    f"{FR_PATH_FILE.as_posix()}/siren.csv"
+                )
+                siren_to_postal = pandas.read_csv(
+                    f"{FR_PATH_FILE.as_posix()}/postal.csv"
+                ).drop_duplicates()
+            except FileNotFoundError as e:
+                logger.error(str(e))
+                raise e
 
-        # TODO: do on="insee" no left_on, right_on
-        city_data = pandas.merge(
-            siren_to_habitant,
-            siren_to_postal,
-            how="inner",
-            left_on="insee",
-            right_on="insee",
-        )
+            siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
 
-        dataframe["city_id"] = dataframe["city_id"].astype(int)
+            city_data = pandas.merge(
+                siren_to_habitant,
+                siren_to_postal,
+                how="inner",
+                on="insee",
+            )
 
-        dataframe = pandas.merge(
-            dataframe, city_data, how="left", left_on="city_id", right_on="siren"
-        )
+            dataframe["city_id"] = dataframe["city_id"].astype(int)
 
-        # TODO: Needed ?
-        dataframe["city_id"] = dataframe["city_id"].astype(int)
+            dataframe = pandas.merge(
+                dataframe, city_data, how="left", left_on="city_id", right_on="siren"
+            )
 
-        # Category
-        logger.debug(f"{self._db} - Matching Category to account.account")
+            # Category
+            logger.debug(f"{self._db} - Matching Category to account.account")
 
-        def matching(code):
-            for row in coa_condition:
-                if fnmatch.fnmatch(code, row["condition"]):
-                    return row["category_id"]
-            return 0
+            def matching(code):
+                for row in coa_condition:
+                    if fnmatch.fnmatch(code, row["condition"]):
+                        return row["category_id"]
+                return 0
 
-        dataframe["category_id"] = dataframe["account_code"].apply(matching)
+            dataframe["category_id"] = dataframe["account_code"].apply(matching)
 
-        dataframe = dataframe[dataframe["category_id"] != 0]
+            dataframe = dataframe[dataframe["category_id"] != 0]
 
-        def find_categories(categ_id):
-            for row in co2_categories:
-                if row.get("id") == categ_id:
-                    return (row.get("code"), row.get("name"))
-            return (False, False)
+            def find_categories(categ_id):
+                for row in co2_categories:
+                    if row.get("id") == categ_id:
+                        return (row.get("code"), row.get("name"))
+                return (False, False)
 
-        def unpack_code(vals):
-            return vals[0]
+            def unpack_code(vals):
+                return vals[0]
 
-        def unpack_name(vals):
-            return vals[1]
+            def unpack_name(vals):
+                return vals[1]
 
-        dataframe["category_tuple"] = dataframe["category_id"].apply(find_categories)
+            dataframe["category_tuple"] = dataframe["category_id"].apply(
+                find_categories
+            )
 
-        dataframe["category_code"] = dataframe["category_tuple"].apply(unpack_code)
-        dataframe["category_name"] = dataframe["category_tuple"].apply(unpack_name)
+            dataframe["category_code"] = dataframe["category_tuple"].apply(unpack_code)
+            dataframe["category_name"] = dataframe["category_tuple"].apply(unpack_name)
 
-        dataframe = dataframe.drop(
-            columns=[
-                "category_id",
-                "category_tuple",
-                "Reg_com",
-                "dep_com",
-                "siren",
-                "insee",
-                "nom_com",
-                "ptot_2023",
-                "pcap_2023",
-            ]
-        )
-        dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
+            dataframe = dataframe.drop(
+                columns=[
+                    "category_id",
+                    "category_tuple",
+                    "Reg_com",
+                    "dep_com",
+                    "siren",
+                    "insee",
+                    "nom_com",
+                    "ptot_2023",
+                    "pcap_2023",
+                ]
+            )
+            dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
 
-        dataframe = dataframe[dataframe["category_name"] != False]
-        # Category
+            dataframe = dataframe[dataframe["category_name"] != False]
+            # Category
 
-        logger.debug(f"{self._db} - Sorting dataframe")
-        dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
+            logger.debug(f"{self._db} - Sorting dataframe")
+            dataframe = dataframe.sort_values(
+                by=["city_id", "account_code", "entry_year"]
+            )
 
-        logger.debug(
-            f"{self._db} - Exporting dataframe to 'data/temp_file/{self._db}.csv'"
-        )
-        dataframe.to_csv(
-            f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
-            index=False,
-        )
+            logger.debug(
+                f"{self._db} - Exporting dataframe to '{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv'"
+            )
+            dataframe.to_csv(
+                f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
+                index=False,
+            )

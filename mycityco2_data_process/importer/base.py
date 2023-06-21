@@ -70,26 +70,28 @@ class AbstractImporter(ABC):
         logger.debug(f"{self._db} - All {model} chunk has been created")
         return vals_list_id
 
-    def __init__(self, env):
+    def __init__(self, env: Environment = None, db: str = None):
         """Initialize the object from an Environment."""
         self.env: Environment = env
+        self._db = db
+
         self.user_ids: Any = self.env["res.users"].search_read([])
         self.currency_id: Any = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
         )
         self.external_layout_id: Any = self.env.ref("web.external_layout_standard")
 
-        # TODO: replace None by recordset
+        # TODO: replace Any by recordset type
 
-        self.city_ids: Any = None
-        self.city_account_account_ids: Any = None
-        self.account_account_ids: Any = None
+        self.city_ids: Any = self.env["res.company"]
+        self.city_account_account_ids: Any = self.env["account.account"]
+        self.account_account_ids: Any = self.env["account.account"]
         self.account_move_ids: Any = self.env["account.move"]
         self.account_move_line_ids: Any = self.env["account.move.line"]
         self.carbon_factor: list[dict[str, str, str]] = None
         self.carbon_factor_id: list[dict[str, Any]] = {}
         self.account_asset_categories: dict = {}
-        self.account_asset: Any = None
+        self.account_asset: Any = self.env["account.asset"]
 
     @abstractmethod
     def source_name(self):
@@ -214,8 +216,4 @@ class AbstractImporter(ABC):
     @depends("account_account_ids")
     def populate_account_move(self):
         """This function is only there to iterate on the create of account.move data."""
-
         self.get_account_move_data()
-
-        # TODO: Search more if we need to post or not the account.move
-        # self.account_move_ids.action_post()
