@@ -96,9 +96,6 @@ class FrImporter(AbstractImporter):
             if len(self._wanted_city) and city.get("com_name") not in self._wanted_city:
                 continue
 
-            if city.get("com_name") in const.settings.SKIPPED_CITY:
-                continue
-
             self._city_amount += 1
             for k in city.keys():
                 if k in self.rename_fields.keys():
