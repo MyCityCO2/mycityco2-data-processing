@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # Method
     @root_validator()
-    def prevent_none(cls, fields):
+    def prevent_none(self, fields):
         for k, v in fields.items():
             if v is None:
                 raise ValueError(f"The fields '{k}' must not be None")
