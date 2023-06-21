@@ -1,9 +1,7 @@
-import fnmatch
 import time
 from abc import ABC, abstractmethod
+from typing import Any
 
-import pandas
-import psycopg2
 from loguru import logger
 from otools_rpc.external_api import Environment
 
@@ -55,9 +53,6 @@ class AbstractImporter(ABC):
         self, model: str = "", vals_list: list = [], chunk: int = 1000
     ):
         """Create vals from an list to an model by chunk, useful to bypass overflow error."""
-        if len(model.split(".")) < 2:
-            raise AttributeError(f"Model '{model}' is not a valid model")
-
         vals_list_id = self.env[model]
 
         chunk_number = (len(vals_list) // chunk) + 1
@@ -68,7 +63,7 @@ class AbstractImporter(ABC):
             vals = vals_list[chunk * i : chunk * (i + 1)]
             created_record = self.env[model].create(vals)
 
-            created_record.read(fields=[k for k, v in vals[0].items()])
+            created_record.read(fields=[k for k, _ in vals[0].items()])
 
             vals_list_id |= created_record
 
@@ -78,21 +73,23 @@ class AbstractImporter(ABC):
     def __init__(self, env):
         """Initialize the object from an Environment."""
         self.env: Environment = env
-        self.user_ids: any = self.env["res.users"].search_read([])
-        self.currency_id: any = self.env["res.currency"].search_read(
+        self.user_ids: Any = self.env["res.users"].search_read([])
+        self.currency_id: Any = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
         )
-        self.external_layout_id: any = self.env.ref("web.external_layout_standard")
+        self.external_layout_id: Any = self.env.ref("web.external_layout_standard")
 
-        self.city_ids: any = None
-        self.city_account_account_ids: any = None
-        self.account_account_ids: any = None
-        self.account_move_ids: any = None
-        self.account_move_line_ids: any = None
+        # TODO: replace None by recordset
+
+        self.city_ids: Any = None
+        self.city_account_account_ids: Any = None
+        self.account_account_ids: Any = None
+        self.account_move_ids: Any = self.env["account.move"]
+        self.account_move_line_ids: Any = self.env["account.move.line"]
         self.carbon_factor: list[dict[str, str, str]] = None
-        self.carbon_factor_id: list[dict[str, any]] = {}
+        self.carbon_factor_id: list[dict[str, Any]] = {}
         self.account_asset_categories: dict = {}
-        self.account_asset: any = None
+        self.account_asset: Any = None
 
     @abstractmethod
     def source_name(self):
@@ -203,19 +200,12 @@ class AbstractImporter(ABC):
 
         return accounts
 
-    def create_account_move(self, vals):
+    def create_account_move(self, vals_list: list):
         """This function is there to create account.move"""
+        account_move_id = self.env["account.move"].create(vals_list)
 
-        account_move_id = self.env["account.move"].create(vals)
-
-        if isinstance(vals, dict):
-            account_move_id.read(fields=[k for k, v in vals.items()])
-
-        elif isinstance(vals, list) and len(vals):
-            account_move_id.read(fields=[k for k, v in vals[0].items()])
-
-        if not self.account_move_ids or not len(self.account_move_ids):
-            self.account_move_ids = self.env["account.move"]
+        if len(vals_list):
+            account_move_id.read(fields=[k for k, _ in vals_list[0].items()])
 
         self.account_move_ids |= account_move_id
 
@@ -229,211 +219,3 @@ class AbstractImporter(ABC):
 
         # TODO: Search more if we need to post or not the account.move
         # self.account_move_ids.action_post()
-
-    def export_data(self):
-        co2_categories = [
-            {"id": 1, "code": "MAI", "name": "Maintenance"},
-            {"id": 2, "code": "CON", "name": "Construction"},
-            {"id": 3, "code": "INS", "name": "Installations"},
-            {"id": 4, "code": "TRP", "name": "Transports"},
-            {"id": 5, "code": "FLU", "name": "Fluides (Energie, Eau...)"},
-            {"id": 6, "code": "SER", "name": "Services"},
-            {"id": 7, "code": "FOU", "name": "Fournitures"},
-            {"id": 8, "code": "OTH", "name": "Autres"},
-            {"id": 9, "code": "ALI", "name": "Alimentation"},
-            {"id": 10, "code": "TAX", "name": "Impots et cotisations"},
-        ]
-
-        coa_condition = sorted(
-            [
-                {"condition": "6*", "category_id": 8, "rule_order": 999},
-                {"condition": "66*", "category_id": 6, "rule_order": 200},
-                {"condition": "61*", "category_id": 6, "rule_order": 200},
-                {"condition": "62*", "category_id": 6, "rule_order": 200},
-                {"condition": "64*", "category_id": 10, "rule_order": 200},
-                {"condition": "63*", "category_id": 10, "rule_order": 200},
-                {"condition": "615*", "category_id": 1, "rule_order": 100},
-                {"condition": "60622*", "category_id": 4, "rule_order": 100},
-                {"condition": "625*", "category_id": 4, "rule_order": 100},
-                {"condition": "6811.21*", "category_id": 2, "rule_order": 100},
-                {"condition": "61551*", "category_id": 4, "rule_order": 100},
-                {"condition": "624*", "category_id": 4, "rule_order": 100},
-                {"condition": "6064*", "category_id": 8, "rule_order": 100},
-                {"condition": "6065*", "category_id": 8, "rule_order": 100},
-                {"condition": "6067*", "category_id": 8, "rule_order": 100},
-                {"condition": "6068*", "category_id": 8, "rule_order": 100},
-                {"condition": "60621*", "category_id": 5, "rule_order": 100},
-                {"condition": "6063*", "category_id": 1, "rule_order": 100},
-                {"condition": "6811.204*", "category_id": 2, "rule_order": 50},
-                {"condition": "6811.203*", "category_id": 6, "rule_order": 50},
-                {"condition": "6811.215*", "category_id": 3, "rule_order": 50},
-                {"condition": "6811.202*", "category_id": 6, "rule_order": 50},
-                {"condition": "6042*", "category_id": 6, "rule_order": 50},
-                {"condition": "6574", "category_id": 6, "rule_order": 50},
-                {"condition": "60623", "category_id": 9, "rule_order": 10},
-                {"condition": "60613", "category_id": 5, "rule_order": 10},
-                {"condition": "6061*", "category_id": 5, "rule_order": 10},
-                {"condition": "60612", "category_id": 5, "rule_order": 10},
-                {"condition": "6811.2182", "category_id": 4, "rule_order": 10},
-            ],
-            key=lambda k: k["rule_order"],
-        )
-
-        connection = (
-            psycopg2.connect(
-                database=self._db,
-                port=const.settings.SQL_PORT,
-                host="localhost",
-                password="odoo",
-                user="odoo",
-            )
-            if const.settings.SQL_LOCAL
-            else psycopg2.connect(
-                database=self._db,
-                port=const.settings.SQL_PORT,
-                host="/tmp",
-                user="odoo",
-            )
-        )
-
-        query = """
-        SELECT
-        partner.company_registry AS city_id,
-        company.name AS city_name,
-        account.code AS account_code,
-        account.name AS account_name,
-        account.code||'-'||account.name AS account,
-        CASE WHEN journal.code = 'IMMO' THEN 'INV' ELSE 'FCT' END AS journal_code,
-        CASE WHEN journal.name = 'Immobilisations' THEN 'Investissement' ELSE 'Fonctionnement' END AS journal_name,
-        EXTRACT ('Year' FROM lines.date) AS entry_year,
-        lines.amount_currency AS entry_amount,
-        currency.name AS entry_currency,
-        lines.carbon_balance as entry_carbon_kgCO2e
-
-        FROM res_company AS company
-
-        INNER JOIN res_partner AS partner ON company.partner_id = partner.id
-        INNER JOIN res_currency AS currency ON company.currency_id = currency.id
-        INNER JOIN account_account AS account ON account.company_id = company.id
-        INNER JOIN account_move_line AS lines on account.id = lines.account_id
-        INNER JOIN account_journal AS journal ON lines.journal_id = journal.id and lines.company_id = journal.company_id
-
-        WHERE EXTRACT ('Year' FROM lines.date) > 2015;
-        """
-        logger.debug(f"{self._db} - Extracting data from ODOO, using SQL")
-        dataframe = pandas.read_sql_query(query, connection)
-
-        # Habitant
-        logger.debug(f"{self._db} - Matching habitant/postal code to city")
-        siren_to_habitant = pandas.read_csv(
-            f"{const.settings.PATH.as_posix()}/data/fr/siren.csv"
-        )
-        # todo : test .drop_duplicates()
-        siren_to_postal = pandas.read_csv(
-            f"{const.settings.PATH.as_posix()}/data/fr/postal.csv"
-        ).drop_duplicates()
-
-        siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
-
-        # print(siren_to_postal)
-
-        city_data = pandas.merge(
-            siren_to_habitant,
-            siren_to_postal,
-            how="inner",
-            left_on="insee",
-            right_on="insee",
-        )
-
-        dataframe["city_id"] = dataframe["city_id"].astype(int)
-
-        dataframe = pandas.merge(
-            dataframe, city_data, how="left", left_on="city_id", right_on="siren"
-        )
-
-        dataframe["city_id"] = dataframe["city_id"].astype(int)
-
-        # def habitant(siren):
-        #     if siren:
-        #         commune = city_data.where(city_data['siren'] == int(siren))
-
-        #         return commune.loc[commune.first_valid_index()].get('pmun_2023')
-        #     return 0
-
-        # def zip_code(siren):
-        #     if siren:
-        #         commune = city_data.where(city_data['siren'] == int(siren))
-
-        #         return commune.loc[commune.first_valid_index()].get('postal')
-        #     return 0
-        # dataframe['habitant'] = dataframe['city_id'].apply(habitant)
-        # dataframe['city_zip_code'] = dataframe['city_id'].apply(zip_code)
-        # Habitant
-
-        # Category
-        logger.debug(f"{self._db} - Matching Category to account.account")
-
-        def matching(code):
-            for row in coa_condition:
-                if fnmatch.fnmatch(code, row["condition"]):
-                    return row["category_id"]
-            return 0
-
-        dataframe["category_id"] = dataframe["account_code"].apply(matching)
-
-        dataframe = dataframe[dataframe["category_id"] != 0]
-
-        def find_categories(categ_id):
-            for row in co2_categories:
-                if row.get("id") == categ_id:
-                    return (row.get("code"), row.get("name"))
-            return (False, False)
-
-        def unpack_code(vals):
-            return vals[0]
-
-        def unpack_name(vals):
-            return vals[1]
-
-        dataframe["category_tuple"] = dataframe["category_id"].apply(find_categories)
-
-        dataframe["category_code"] = dataframe["category_tuple"].apply(unpack_code)
-        dataframe["category_name"] = dataframe["category_tuple"].apply(unpack_name)
-
-        dataframe = dataframe.drop(
-            columns=[
-                "category_id",
-                "category_tuple",
-                "Reg_com",
-                "dep_com",
-                "siren",
-                "insee",
-                "nom_com",
-                "ptot_2023",
-                "pcap_2023",
-            ]
-        )
-        dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
-
-        dataframe = dataframe[dataframe["category_name"] != False]
-        # Category
-
-        logger.debug(f"{self._db} - Computing Carbon per habitant")
-        # Carbon Factor
-        # dataframe['entry_carbon_kgco2e_per_hab'] = dataframe['entry_carbon_kgco2e']/dataframe['habitant']
-        # Carbon Factor
-
-        # dataframe = dataframe[['city_id', 'city_name', "account_code", 'account_name', 'journal_code', 'journal_name', 'entry_year', 'entry_amount']]
-
-        # print(dataframe)
-
-        logger.debug(f"{self._db} - Sorting dataframe")
-        dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
-
-        logger.debug(
-            f"{self._db} - Exporting dataframe to 'data/temp_file/{self._db}.csv'"
-        )
-        dataframe.to_csv(
-            f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
-            index=False,
-        )

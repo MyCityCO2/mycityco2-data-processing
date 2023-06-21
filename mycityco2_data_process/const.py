@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # ENV_TEMPLATE_DB: str = 'template'
     ENV_DB: str = "temp-departement-cli-testing"
     ENV_USERNAME: str = "__system__"
-    # todo: add validator and make it optional
+    # todo: add validator and make it optional and raise error
     ENV_PASSWORD: str
     ENV_MASTER_PASSWORD: str
 
@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     SKIPPED_CITY: list[str] = []
 
     SQL_PORT = 666
+    # TODO: Operation mode, find other way
     SQL_LOCAL = False
     # SQL_PORT = 667
 

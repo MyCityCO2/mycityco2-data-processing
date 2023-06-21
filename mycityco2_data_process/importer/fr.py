@@ -1,9 +1,10 @@
 import csv
 import datetime
 import fnmatch
-import json
 import time
 
+import pandas
+import psycopg2
 import requests
 import xmltodict
 from bs4 import BeautifulSoup
@@ -36,12 +37,12 @@ def _get_chart_account(dictionnary: dict, result_list: list = []):
     return result_list
 
 
-NOMENCLATURE: tuple = ("M14", "M14A", "M57")
 NOMENCLATURE_PARAMS: dict = {
     "M14": "M14/M14_COM_SUP3500",
     "M14A": "M14/M14_COM_INF500",
     "M57": "M57/M57",
 }
+NOMENCLATURE: tuple = list(NOMENCLATURE_PARAMS.keys())
 
 CHART_OF_ACCOUNT_URL: str = (
     "http://odm-budgetaire.org/composants/normes/2021/{}/planDeCompte.xml"
@@ -49,6 +50,7 @@ CHART_OF_ACCOUNT_URL: str = (
 
 
 class FrImporter(AbstractImporter):
+    # TODO: Remove city_name argument
     def __init__(
         self,
         limit: int = 50,
@@ -59,16 +61,13 @@ class FrImporter(AbstractImporter):
         db=const.settings.ENV_DB,
         dataset: list = [],
     ):
+        # TODO: remove db add to super
         super().__init__(env)
         self._db = db
-        self._wanted_city = city_name
         self.rename_fields: dict = {"com_name": "name", "com_siren_code": "district"}
         self._dataset = dataset
         self._city_amount: int = 0
 
-        if len(self._wanted_city):
-            limit = -1
-            offset = 0
         self.url: str = f"https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={limit}&start={offset}&refine.dep_code={departement}"
 
     @property
@@ -91,23 +90,11 @@ class FrImporter(AbstractImporter):
         for city in data:
             city = city.get("fields")
 
-            final_city = {}
-
-            if len(self._wanted_city) and city.get("com_name") not in self._wanted_city:
-                continue
-
+            # DEV
             if city.get("com_name") in const.settings.SKIPPED_CITY:
                 continue
 
-            self._city_amount += 1
-            for k in city.keys():
-                if k in self.rename_fields.keys():
-                    if self.rename_fields.get(k):
-                        final_city[self.rename_fields.get(k)] = city[k]
-                    else:
-                        final_city[k] = city[k]
-
-            final_data.append(final_city)
+            final_data.append({v: city.get(k) for k, v in self.rename_fields.items()})
 
         return final_data
 
@@ -116,23 +103,22 @@ class FrImporter(AbstractImporter):
         journals_ids = []
 
         for city in self.city_ids:
-            city_id = city.id
-
-            journal_account_asset = {
-                "type": "general",
-                "code": "IMMO",
-                "company_id": city_id,
-                "name": "Immobilisations",
-            }
-            journals_ids.append(journal_account_asset)
-
-            journal_bud = {
-                "type": "general",
-                "code": "BUD",
-                "company_id": city_id,
-                "name": "Journal",
-            }
-            journals_ids.append(journal_bud)
+            journals_ids.append(
+                {
+                    "type": "general",
+                    "code": "IMMO",
+                    "company_id": city.id,
+                    "name": "Immobilisations",
+                }
+            )
+            journals_ids.append(
+                {
+                    "type": "general",
+                    "code": "BUD",
+                    "company_id": city.id,
+                    "name": "Journal",
+                }
+            )
 
         return journals_ids
 
@@ -153,29 +139,23 @@ class FrImporter(AbstractImporter):
                 )
 
             res = requests.get(CHART_OF_ACCOUNT_URL.format(nomen_param))
-
             content = res.content
-
             data = xmltodict.parse(BeautifulSoup(content, "xml").prettify())
-
             account = data.get("Nomenclature").get("Nature").get("Comptes")
-
             accounts = _get_chart_account(account, [])
 
-            if (
-                len(list(filter(lambda element: element["code"] == "65888", accounts)))
-                == 0
-            ):
+            # TODO: Try another method
+            if not any(dictionnary["code"] == "65888" for dictionnary in accounts):
                 accounts.append(
                     {
                         "name": "Autres",
                         "code": "65888",
                     }
                 )
+
             final_accounts[nomen] = accounts
 
         step2_1_end_timer = time.perf_counter()
-
         self.step2_1 += step2_1_end_timer - step2_1_start_timer
 
         self.account_account_ids = final_accounts
@@ -184,6 +164,7 @@ class FrImporter(AbstractImporter):
         )
         return final_accounts
 
+    # TODO: Do list comprehension, make it plural
     def gen_carbon_factor(self):
         if not self.carbon_factor:
             categories = []
@@ -208,39 +189,33 @@ class FrImporter(AbstractImporter):
         accounts = self.gen_account_account_data()
 
         self.step2_2 = 0
-
         step2_2_start_timer = time.perf_counter()
-
-        cities = self.city_ids
 
         url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine={}&refine=siren%3A{}&limit=1&timezone=UTC"
 
         account_account_ids = []
 
-        for city in cities:
+        for city in self.city_ids:
             logger.debug(f"{self._db} - Generating account set for {city.name}")
-            city_id = city.id
-            city_registry = city.company_registry
 
+            # TODO: Add explain comment
             refine_parameter = "cbudg:1"
             if const.settings.YEAR[-1] <= 2015:
                 refine_parameter = "budget:BP"
 
             res_nomen = requests.get(
-                url.format(const.settings.YEAR[-1], refine_parameter, city_registry)
+                url.format(
+                    const.settings.YEAR[-1], refine_parameter, city.company_registry
+                )
             )
 
-            content_nomen = res_nomen.content.decode("utf8")
-
-            data_nomen = json.loads(content_nomen)
-
-            nomen = data_nomen[0].get("nomen")
+            nomen = res_nomen.json()[0].get("nomen")
 
             account_account_ids.append(
                 {
                     "code": "000",
                     "name": "Placeholder",
-                    "company_id": city_id,
+                    "company_id": city.id,
                     "account_type": const.settings.DEFAULT_ACCOUNT_TYPE,
                 }
             )
@@ -252,7 +227,7 @@ class FrImporter(AbstractImporter):
                 account_id = {
                     "code": code,
                     "name": name,
-                    "company_id": city_id,
+                    "company_id": city.id,
                     "account_type": const.settings.DEFAULT_ACCOUNT_TYPE,
                 }
 
@@ -269,20 +244,22 @@ class FrImporter(AbstractImporter):
                         break
 
                 account_account_ids.append(account_id)
-        step2_2_end_timer = time.perf_counter()
 
+        step2_2_end_timer = time.perf_counter()
         self.step2_2 = step2_2_end_timer - step2_2_start_timer
+
         return account_account_ids
 
     @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
         self.step3_1 = self.step3_2 = self.step3_3 = 0
 
-        account_journal_dict = {}
-        for journal in self.journals_ids:
-            if journal.code != "BUD":
-                continue
-            account_journal_dict[journal.company_id[0]] = journal
+        account_journal_dict = {
+            record.company_id[0]: record
+            for record in self.journals_ids.filtered(
+                lambda record: record.code == "BUD"
+            )
+        }
 
         for city in self.city_ids:
             journal_bud = account_journal_dict[city.id]
@@ -299,29 +276,27 @@ class FrImporter(AbstractImporter):
 
             for year in const.settings.YEAR:
                 city_account_move_line_ids = []
-                date = f"{year}-12-31"
+                date = f"{year}-12-31"  # YEAR / MONTH / DAY
 
                 logger.debug(
                     f"{self._db} - Generating account move set for {city.name} for {year}"
                 )
 
                 account_move_bud_id = self.create_account_move(
-                    {
-                        "date": date,
-                        "journal_id": journal_bud.id,
-                        "company_id": city.id,
-                        "ref": journal_bud.name,
-                    }
+                    [
+                        {
+                            "date": date,
+                            "journal_id": journal_bud.id,
+                            "company_id": city.id,
+                            "ref": journal_bud.name,
+                        }
+                    ]
                 )
 
-                if not self.account_move_ids:
-                    self.account_move_ids = account_move_bud_id
-                else:
-                    self.account_move_ids |= account_move_bud_id
+                # TODO: add explain comment, and one liner the other one
 
-                refine_parameter = "cbudg:1"
-                if year <= 2015:
-                    refine_parameter = "budget:BP"
+                refine_parameter = "budget:BP" if year <= 2015 else "cbudg:1"
+
                 step3_1_start_timer = time.perf_counter()
                 url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
                 step3_1_end_timer = time.perf_counter()
@@ -356,18 +331,17 @@ class FrImporter(AbstractImporter):
                         # 'code-compte': plan_id.code
                     }
 
-                    if credit_bud != 0.0:
+                    if credit_bud:
                         city_account_move_line_ids.append(
                             line_id_bud | {"debit": 0.0, "credit": credit_bud}
                         )
 
-                    if debit_bud != 0.0:
+                    if debit_bud:
                         city_account_move_line_ids.append(
                             line_id_bud | {"debit": debit_bud, "credit": 0.0}
                         )
 
                 step3_2_end_timer = time.perf_counter()
-
                 self.step3_2 += step3_2_end_timer - step3_2_start_timer
 
                 step3_3_start_timer = time.perf_counter()
@@ -375,19 +349,16 @@ class FrImporter(AbstractImporter):
                 account_move_lines_ids = self.env["account.move.line"].create(
                     city_account_move_line_ids
                 )
-                if len(city_account_move_line_ids):
+
+                if account_move_lines_ids:
                     account_move_lines_ids.read(
-                        fields=[k for k, v in city_account_move_line_ids[0].items()]
+                        fields=[k for k, _ in city_account_move_line_ids[0].items()]
                     )
 
                 step3_3_end_timer = time.perf_counter()
-
                 self.step3_3 += step3_3_end_timer - step3_3_start_timer
-                if not self.account_move_line_ids:
-                    self.account_move_line_ids = account_move_lines_ids
-                else:
-                    for account_move_line in account_move_lines_ids:
-                        self.account_move_line_ids |= account_move_line
+
+                self.account_move_line_ids |= account_move_lines_ids
 
         return self.account_move_line_ids
 
@@ -397,34 +368,35 @@ class FrImporter(AbstractImporter):
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
-        cities = self.city_ids
-
         account_asset_categories = {}
 
-        account_journal_dict = {}
-        for journal in self.journals_ids:
-            if journal.code != "IMMO":
-                continue
-            account_journal_dict[journal.company_id[0]] = journal
+        account_journal_dict = {
+            journal.company_id[0]: journal
+            for journal in self.journals_ids.filtered(
+                lambda record: record.code == "IMMO"
+            )
+        }
 
         account_account_dict = {}
         for account in self.city_account_account_ids:
-            _key = f"{account.company_id[0]}-{account.code}"
-            account_account_dict[_key] = account
+            key = f"{account.company_id[0]}-{account.code}"
+            account_account_dict[key] = account
 
         with open(const.settings.ACCOUNT_ASSET_FILE, newline="") as csvfile:
             reader = csv.DictReader(csvfile)
 
             for row in reader:
-                if row.get("FE") and row.get("FE") != "#N/A":
-                    carbon_id = self.env.ref(row.get("FE"))
-                for city in cities:
+                carbon_id = (
+                    self.env.ref(row.get("FE"))
+                    if row.get("FE", "#N/A") != "#N/A"
+                    else None
+                )
+                for city in self.city_ids:
                     step4_1_start_timer = time.perf_counter()
-                    account_account_id = account_account_dict.get(
-                        f"{city.id}-{row['Code']}"
-                    )
 
-                    if account_account_id:
+                    if account_account_id := account_account_dict.get(
+                        f"{city.id}-{row['Code']}"
+                    ):
                         vals = {
                             "name": account_account_id.name,
                             "code": "6811." + row.get("Code"),
@@ -438,7 +410,7 @@ class FrImporter(AbstractImporter):
                                 "carbon_in_is_manual": True,
                                 "carbon_in_factor_id": carbon_id.id,
                             }
-                            if row.get("FE") and row.get("FE") != "#N/A"
+                            if carbon_id
                             else {}
                         )
 
@@ -480,22 +452,18 @@ class FrImporter(AbstractImporter):
 
         step4_3_start_timer = time.perf_counter()
 
-        categories = self.account_asset_categories
-
         account_asset_ids = []
 
         for lines in self.account_move_line_ids:
-            lines_name = lines.name
-
             if (
-                lines_name.startswith("20")
-                or lines_name.startswith("21")
+                lines.name.startswith("20")
+                or lines.name.startswith("21")
                 and lines.debit > 0
             ):
                 year = datetime.datetime.strptime(lines.date, "%Y-%m-%d").strftime("%Y")
-                profile_id = categories.get(lines.account_id[0])
+                profile_id = self.account_asset_categories.get(lines.account_id[0])
                 account_asset = {
-                    "name": lines_name + "." + year,
+                    "name": lines.name + "." + year,
                     "purchase_value": lines.debit,
                     "date_start": str(int(year)) + "-01-01",
                     "company_id": lines.company_id[0],
@@ -508,18 +476,19 @@ class FrImporter(AbstractImporter):
 
         self.step4_3 += step4_3_end_timer - step4_3_start_timer
 
-        if len(account_asset_ids) > 0:
+        if account_asset_ids:
             step4_4_start_timer = time.perf_counter()
+
             ids = self.env["account.asset"].create(account_asset_ids)
             ids.read(fields=[k for k, v in account_asset_ids[0].items()])
+
             step4_4_end_timer = time.perf_counter()
-
             self.step4_4 += step4_4_end_timer - step4_4_start_timer
-
             step4_5_start_timer = time.perf_counter()
-            self.env["account.asset"].browse(ids.ids).validate()
-            step4_5_end_timer = time.perf_counter()
 
+            self.env["account.asset"].browse(ids.ids).validate()
+
+            step4_5_end_timer = time.perf_counter()
             self.step4_5 += step4_5_end_timer - step4_5_start_timer
 
         self.account_asset = account_asset_ids
@@ -541,14 +510,14 @@ class FrImporter(AbstractImporter):
             ]
         )
 
-        line_ids = [element["id"] for element in account_asset_line_ids]
-
-        chunk_number = (len(line_ids) // const.settings.ACCOUNT_ASSET_CHUNK_SIZE) + 1
+        chunk_number = (
+            len(account_asset_line_ids) // const.settings.ACCOUNT_ASSET_CHUNK_SIZE
+        ) + 1
         for i in range(chunk_number):
             logger.debug(
                 f"{self._db} - Account Asset Create Move {i + 1}/{chunk_number}"
             )
-            account_ids = line_ids[
+            account_ids = account_asset_line_ids[
                 const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * i : const.settings.ACCOUNT_ASSET_CHUNK_SIZE
                 * (i + 1)
@@ -560,3 +529,191 @@ class FrImporter(AbstractImporter):
         self.step4_6 += step4_6_end_timer - step4_6_start_timer
 
         return True
+
+    def export_data(self):
+
+        # TODO: Data to CSV
+        co2_categories = [
+            {"id": 1, "code": "MAI", "name": "Maintenance"},
+            {"id": 2, "code": "CON", "name": "Construction"},
+            {"id": 3, "code": "INS", "name": "Installations"},
+            {"id": 4, "code": "TRP", "name": "Transports"},
+            {"id": 5, "code": "FLU", "name": "Fluides (Energie, Eau...)"},
+            {"id": 6, "code": "SER", "name": "Services"},
+            {"id": 7, "code": "FOU", "name": "Fournitures"},
+            {"id": 8, "code": "OTH", "name": "Autres"},
+            {"id": 9, "code": "ALI", "name": "Alimentation"},
+            {"id": 10, "code": "TAX", "name": "Impots et cotisations"},
+        ]
+
+        # TODO: Data to CSV
+        coa_condition = sorted(
+            [
+                {"condition": "6*", "category_id": 8, "rule_order": 999},
+                {"condition": "66*", "category_id": 6, "rule_order": 200},
+                {"condition": "61*", "category_id": 6, "rule_order": 200},
+                {"condition": "62*", "category_id": 6, "rule_order": 200},
+                {"condition": "64*", "category_id": 10, "rule_order": 200},
+                {"condition": "63*", "category_id": 10, "rule_order": 200},
+                {"condition": "615*", "category_id": 1, "rule_order": 100},
+                {"condition": "60622*", "category_id": 4, "rule_order": 100},
+                {"condition": "625*", "category_id": 4, "rule_order": 100},
+                {"condition": "6811.21*", "category_id": 2, "rule_order": 100},
+                {"condition": "61551*", "category_id": 4, "rule_order": 100},
+                {"condition": "624*", "category_id": 4, "rule_order": 100},
+                {"condition": "6064*", "category_id": 8, "rule_order": 100},
+                {"condition": "6065*", "category_id": 8, "rule_order": 100},
+                {"condition": "6067*", "category_id": 8, "rule_order": 100},
+                {"condition": "6068*", "category_id": 8, "rule_order": 100},
+                {"condition": "60621*", "category_id": 5, "rule_order": 100},
+                {"condition": "6063*", "category_id": 1, "rule_order": 100},
+                {"condition": "6811.204*", "category_id": 2, "rule_order": 50},
+                {"condition": "6811.203*", "category_id": 6, "rule_order": 50},
+                {"condition": "6811.215*", "category_id": 3, "rule_order": 50},
+                {"condition": "6811.202*", "category_id": 6, "rule_order": 50},
+                {"condition": "6042*", "category_id": 6, "rule_order": 50},
+                {"condition": "6574", "category_id": 6, "rule_order": 50},
+                {"condition": "60623", "category_id": 9, "rule_order": 10},
+                {"condition": "60613", "category_id": 5, "rule_order": 10},
+                {"condition": "6061*", "category_id": 5, "rule_order": 10},
+                {"condition": "60612", "category_id": 5, "rule_order": 10},
+                {"condition": "6811.2182", "category_id": 4, "rule_order": 10},
+            ],
+            key=lambda k: k["rule_order"],
+        )
+
+        # TODO: with and close connection
+
+        connection = (
+            psycopg2.connect(
+                database=self._db,
+                port=const.settings.SQL_PORT,
+                host="localhost",
+                password="odoo",
+                user="odoo",
+            )
+            if const.settings.SQL_LOCAL
+            else psycopg2.connect(
+                database=self._db,
+                port=const.settings.SQL_PORT,
+                host="/tmp",
+                user="odoo",
+            )
+        )
+
+        query = """
+        SELECT
+        partner.company_registry AS city_id,
+        company.name AS city_name,
+        account.code AS account_code,
+        account.name AS account_name,
+        account.code||'-'||account.name AS account,
+        CASE WHEN journal.code = 'IMMO' THEN 'INV' ELSE 'FCT' END AS journal_code,
+        CASE WHEN journal.name = 'Immobilisations' THEN 'Investissement' ELSE 'Fonctionnement' END AS journal_name,
+        EXTRACT ('Year' FROM lines.date) AS entry_year,
+        lines.amount_currency AS entry_amount,
+        currency.name AS entry_currency,
+        lines.carbon_balance as entry_carbon_kgCO2e
+
+        FROM res_company AS company
+
+        INNER JOIN res_partner AS partner ON company.partner_id = partner.id
+        INNER JOIN res_currency AS currency ON company.currency_id = currency.id
+        INNER JOIN account_account AS account ON account.company_id = company.id
+        INNER JOIN account_move_line AS lines on account.id = lines.account_id
+        INNER JOIN account_journal AS journal ON lines.journal_id = journal.id and lines.company_id = journal.company_id
+
+        WHERE EXTRACT ('Year' FROM lines.date) > 2015;
+        """
+        logger.debug(f"{self._db} - Extracting data from ODOO, using SQL")
+        dataframe = pandas.read_sql_query(query, connection)
+
+        # TODO: add try catch
+        # Habitant
+        logger.debug(f"{self._db} - Matching habitant/postal code to city")
+        siren_to_habitant = pandas.read_csv(
+            f"{const.settings.PATH.as_posix()}/data/fr/siren.csv"
+        )
+        # todo : test .drop_duplicates()
+        siren_to_postal = pandas.read_csv(
+            f"{const.settings.PATH.as_posix()}/data/fr/postal.csv"
+        ).drop_duplicates()
+
+        siren_to_postal = siren_to_postal.groupby(["insee"]).agg(lambda x: list(x))
+
+        # TODO: do on="insee" no left_on, right_on
+        city_data = pandas.merge(
+            siren_to_habitant,
+            siren_to_postal,
+            how="inner",
+            left_on="insee",
+            right_on="insee",
+        )
+
+        dataframe["city_id"] = dataframe["city_id"].astype(int)
+
+        dataframe = pandas.merge(
+            dataframe, city_data, how="left", left_on="city_id", right_on="siren"
+        )
+
+        # TODO: Needed ?
+        dataframe["city_id"] = dataframe["city_id"].astype(int)
+
+        # Category
+        logger.debug(f"{self._db} - Matching Category to account.account")
+
+        def matching(code):
+            for row in coa_condition:
+                if fnmatch.fnmatch(code, row["condition"]):
+                    return row["category_id"]
+            return 0
+
+        dataframe["category_id"] = dataframe["account_code"].apply(matching)
+
+        dataframe = dataframe[dataframe["category_id"] != 0]
+
+        def find_categories(categ_id):
+            for row in co2_categories:
+                if row.get("id") == categ_id:
+                    return (row.get("code"), row.get("name"))
+            return (False, False)
+
+        def unpack_code(vals):
+            return vals[0]
+
+        def unpack_name(vals):
+            return vals[1]
+
+        dataframe["category_tuple"] = dataframe["category_id"].apply(find_categories)
+
+        dataframe["category_code"] = dataframe["category_tuple"].apply(unpack_code)
+        dataframe["category_name"] = dataframe["category_tuple"].apply(unpack_name)
+
+        dataframe = dataframe.drop(
+            columns=[
+                "category_id",
+                "category_tuple",
+                "Reg_com",
+                "dep_com",
+                "siren",
+                "insee",
+                "nom_com",
+                "ptot_2023",
+                "pcap_2023",
+            ]
+        )
+        dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
+
+        dataframe = dataframe[dataframe["category_name"] != False]
+        # Category
+
+        logger.debug(f"{self._db} - Sorting dataframe")
+        dataframe = dataframe.sort_values(by=["city_id", "account_code", "entry_year"])
+
+        logger.debug(
+            f"{self._db} - Exporting dataframe to 'data/temp_file/{self._db}.csv'"
+        )
+        dataframe.to_csv(
+            f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
+            index=False,
+        )
