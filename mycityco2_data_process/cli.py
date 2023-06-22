@@ -72,16 +72,16 @@ def csv(
     merge: bool = typer.Option(False, "-m", "--merge"),
     delete: bool = typer.Option(False, "-d", "--delete"),
     name: str = typer.Option("city_data", "-n", "--name"),
+    move: bool = typer.Option(False, "--move"),
 ):
+    _path = const.settings.PATH / "data" / "temp_file"
     if merge:
         # Merging csv #
         logger.info("Merging CSV")
-        _path = const.settings.PATH / "data" / "temp_file"
 
         dataframe = pandas.DataFrame()
 
         csv_files = os.listdir(_path.resolve().as_posix())
-
         for file in csv_files:
             if file.endswith(".csv") and file.startswith("temp"):
                 logger.info(f"Merging '{file}'")
@@ -97,6 +97,22 @@ def csv(
 
         logger.info("CSV Merged")
         # Merging csv #
+
+    if move:
+        logger.info("Starting moving the files")
+        files = os.listdir(_path.resolve().as_posix())
+        dst_path = os.path.join(_path, name)
+        if not os.path.exists(dst_path):
+            os.mkdir(dst_path)
+        for file in files:
+            if file.endswith(".csv"):
+                logger.info(f"Moving file '{file}'...")
+                file_src_path = os.path.join(_path, file)
+                file_dst_path = os.path.join(dst_path, file)
+
+                os.rename(file_src_path, file_dst_path)
+
+        logger.info(f"All files mooved to '{dst_path}'")
 
 
 # @cli.command()
