@@ -30,6 +30,8 @@ FR_PATH_FILE = const.settings.PATH / "data" / "fr"
 COA_CONDITION_FILE = FR_PATH_FILE / "coa_condition.csv"
 COA_CATEGORIES_FILE = FR_PATH_FILE / "coa_categories.csv"
 
+CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
+
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
     value_list = dictionnary.get("Compte")
@@ -53,6 +55,13 @@ def _get_chart_account(dictionnary: dict, result_list: list = []):
     return result_list
 
 
+def get_departement_size(departement: int = 74):
+    cities_list = (
+        requests.get(CITIES_URL.format(-1, 0, departement)).json().get("records")
+    )
+    return len(cities_list)
+
+
 class FrImporter(AbstractImporter):
     def __init__(
         self,
@@ -68,7 +77,7 @@ class FrImporter(AbstractImporter):
         self._dataset = dataset
         self._city_amount: int = 0
 
-        self.url: str = f"https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={limit}&start={offset}&refine.dep_code={departement}"
+        self.url: str = CITIES_URL.format(limit, offset, departement)
 
     @property
     def source_name(self):
@@ -121,7 +130,6 @@ class FrImporter(AbstractImporter):
         return journals_ids
 
     def gen_account_account_data(self):
-        self.step2_1 = 0
         step2_1_start_timer = time.perf_counter()
         nomens = NOMENCLATURE
         logger.debug(f"{self._db} - Generating {', '.join(nomens)} account set")
@@ -171,7 +179,12 @@ class FrImporter(AbstractImporter):
                     categories.append(
                         {
                             "condition": row.get("condition"),
-                            "id": self.env.ref(row.get("external id carbon.factor")),
+                            "id": self.env.ref(
+                                row.get(
+                                    "external id carbon.factor",
+                                    "ons_import_carbon_factor.null",
+                                )
+                            ),
                             "rule_order": row.get("rule_order", 0),
                         }
                     )
@@ -185,7 +198,6 @@ class FrImporter(AbstractImporter):
         logger.debug(f"{self._db} - Generating account")
         accounts = self.gen_account_account_data()
 
-        self.step2_2 = 0
         step2_2_start_timer = time.perf_counter()
 
         url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine={}&refine=siren%3A{}&limit=1&timezone=UTC"
@@ -243,14 +255,12 @@ class FrImporter(AbstractImporter):
                 account_account_ids.append(account_id)
 
         step2_2_end_timer = time.perf_counter()
-        self.step2_2 = step2_2_end_timer - step2_2_start_timer
+        self.step2_2 += step2_2_end_timer - step2_2_start_timer
 
         return account_account_ids
 
     @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
-        self.step3_1 = self.step3_2 = self.step3_3 = 0
-
         account_journal_dict = {
             record.company_id[0]: record
             for record in self.journals_ids.filtered(
@@ -359,8 +369,6 @@ class FrImporter(AbstractImporter):
         return self.account_move_line_ids
 
     def account_asset_create_categories(self):
-        self.step4_1 = self.step4_2 = 0
-
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
@@ -373,76 +381,80 @@ class FrImporter(AbstractImporter):
             )
         }
 
-        account_account_dict = {}
-        for account in self.city_account_account_ids:
-            key = f"{account.company_id[0]}-{account.code}"
-            account_account_dict[key] = account
+        created_categories_asset = []
 
         with open(const.settings.ACCOUNT_ASSET_FILE, newline="") as csvfile:
-            reader = csv.DictReader(csvfile)
+            reader = sorted(csv.DictReader(csvfile), key=lambda k: k["rule_order"])
+            # logger.critical(reader)
 
             for row in reader:
-                carbon_id = (
-                    self.env.ref(row.get("FE"))
-                    if row.get("FE", "#N/A") != "#N/A"
-                    else None
+                # print(self.city_account_account_ids)
+                external_id = (
+                    row.get("FE")
+                    if row.get("FE") not in ("0", 0)
+                    else "ons_import_carbon_factor.null"
                 )
+                carbon_id = self.env.ref(external_id)
                 for city in self.city_ids:
-                    step4_1_start_timer = time.perf_counter()
+                    for account in self.city_account_account_ids:
+                        if account.company_id[0] is not city.id:
+                            continue
 
-                    if account_account_id := account_account_dict.get(
-                        f"{city.id}-{row['Code']}"
-                    ):
-                        vals = {
-                            "name": account_account_id.name,
-                            "code": "6811." + row.get("Code"),
-                            "account_type": account_account_id.account_type,
-                            "company_id": city.id,
-                        }
+                        if fnmatch.fnmatch(account.code, row.get("Code")):
+                            if f"{city.id}-{account.code}" in created_categories_asset:
+                                continue
+                            step4_1_start_timer = time.perf_counter()
 
-                        vals |= (
-                            {
-                                "use_carbon_value": True,
-                                "carbon_in_is_manual": True,
-                                "carbon_in_factor_id": carbon_id.id,
-                            }
-                            if carbon_id
-                            else {}
-                        )
-
-                        account_account_depreciation_id = self.env[
-                            "account.account"
-                        ].create(vals)
-
-                        journal_id = account_journal_dict[city.id]
-
-                        step4_1_end_timer = time.perf_counter()
-
-                        self.step4_1 += step4_1_end_timer - step4_1_start_timer
-                        step4_2_start_timer = time.perf_counter()
-
-                        cat = self.env["account.asset.profile"].create(
-                            {
+                            vals = {
+                                "name": account.name,
+                                "code": "6811." + account.code,
+                                "account_type": account.account_type,
                                 "company_id": city.id,
-                                "name": account_account_id.name,
-                                "method_number": row["Years"],
-                                "account_asset_id": account_account_id.id,
-                                "account_depreciation_id": account_account_id.id,
-                                "account_expense_depreciation_id": account_account_depreciation_id.id,
-                                "journal_id": journal_id.id,
                             }
-                        )
-                        step4_2_end_timer = time.perf_counter()
-                        self.step4_2 += step4_2_end_timer - step4_2_start_timer
 
-                        account_asset_categories[account_account_id.id] = cat.id
+                            vals |= (
+                                {
+                                    "use_carbon_value": True,
+                                    "carbon_in_is_manual": True,
+                                    "carbon_in_factor_id": carbon_id.id,
+                                }
+                                if carbon_id
+                                else {}
+                            )
+
+                            account_account_depreciation_id = self.env[
+                                "account.account"
+                            ].create(vals)
+
+                            journal_id = account_journal_dict[city.id]
+
+                            step4_1_end_timer = time.perf_counter()
+
+                            self.step4_1 += step4_1_end_timer - step4_1_start_timer
+                            step4_2_start_timer = time.perf_counter()
+
+                            cat = self.env["account.asset.profile"].create(
+                                {
+                                    "company_id": city.id,
+                                    "name": account.name,
+                                    "method_number": row.get("Years", 0),
+                                    "account_asset_id": account.id,
+                                    "account_depreciation_id": account.id,
+                                    "account_expense_depreciation_id": account_account_depreciation_id.id,
+                                    "journal_id": journal_id.id,
+                                }
+                            )
+                            step4_2_end_timer = time.perf_counter()
+                            self.step4_2 += step4_2_end_timer - step4_2_start_timer
+
+                            account_asset_categories[account.id] = cat.id
+                            created_categories_asset.append(f"{city.id}-{account.code}")
 
         self.account_asset_categories = account_asset_categories
 
         return self.account_asset_categories
 
     def populate_account_asset(self):
-        self.step4_3 = self.step4_4 = self.step4_5 = 0
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset
 
@@ -492,7 +504,6 @@ class FrImporter(AbstractImporter):
         return self.account_asset
 
     def account_asset_create_move(self):
-        self.step4_6 = 0
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return False
 
@@ -566,7 +577,8 @@ class FrImporter(AbstractImporter):
         EXTRACT ('Year' FROM lines.date) AS entry_year,
         lines.amount_currency AS entry_amount,
         currency.name AS entry_currency,
-        lines.carbon_balance as entry_carbon_kgCO2e
+        lines.carbon_balance AS entry_carbon_kgCO2e,
+        factor.name AS emission_factor_name
 
         FROM res_company AS company
 
@@ -575,6 +587,7 @@ class FrImporter(AbstractImporter):
         INNER JOIN account_account AS account ON account.company_id = company.id
         INNER JOIN account_move_line AS lines on account.id = lines.account_id
         INNER JOIN account_journal AS journal ON lines.journal_id = journal.id and lines.company_id = journal.company_id
+        LEFT JOIN carbon_factor AS factor on account.carbon_in_factor_id = factor.id
 
         WHERE EXTRACT ('Year' FROM lines.date) > 2015;
         """
@@ -657,6 +670,10 @@ class FrImporter(AbstractImporter):
                 ]
             )
             dataframe = dataframe.rename(columns={"pmun_2023": "habitant"})
+
+            dataframe["entry_carbon_kgco2e_per_hab"] = (
+                dataframe["entry_carbon_kgco2e"] / dataframe["habitant"]
+            )
 
             dataframe = dataframe[dataframe["category_name"] != False]
             # Category

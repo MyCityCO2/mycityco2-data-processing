@@ -37,11 +37,11 @@ def setup():
     )
     # logger.add(sys.stdout, enqueue=True, colorize=True, format=const.settings.LOGORU_FORMAT, level=const.settings.LOGURU_LEVEL)
 
-    logger.add(
-        lambda msg: send_discord(msg),
-        format="{message}",
-        colorize=False,
-        level="CRITICAL",  # POST message to discord when error
-    )
+    # logger.add(
+    #     lambda msg: send_discord(msg),
+    #     format="{message}",
+    #     colorize=False,
+    #     level="CRITICAL",  # POST message to discord when error
+    # )
 
     logger.level("FTRACE", no=3, color="<blue>")

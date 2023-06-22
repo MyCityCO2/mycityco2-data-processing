@@ -93,6 +93,27 @@ class AbstractImporter(ABC):
         self.account_asset_categories: dict = {}
         self.account_asset: Any = self.env["account.asset"]
 
+        self.init_step()
+
+    def init_step(self):
+        self.step1_1 = 0
+        self.step1_2 = 0
+        self.step2_3 = 0
+
+        self.step2_1 = 0
+        self.step2_2 = 0
+
+        self.step3_1 = 0
+        self.step3_2 = 0
+        self.step3_3 = 0
+
+        self.step4_1 = 0
+        self.step4_2 = 0
+        self.step4_3 = 0
+        self.step4_4 = 0
+        self.step4_5 = 0
+        self.step4_6 = 0
+
     @abstractmethod
     def source_name(self):
         """This need to return an string, you may choose what in the string but we'll do 'API', 'DOCX'"""
@@ -130,7 +151,6 @@ class AbstractImporter(ABC):
     @depends("external_layout_id", "user_ids", "currency_id")
     def cities_data_list(self):
         """This function use our get_cities data to parse our old data to newer one."""
-        self.step1_1 = 0
         step1_1_start_timer = time.perf_counter()
         cities = self.get_cities()
 
@@ -169,8 +189,6 @@ class AbstractImporter(ABC):
         """This function is only there to create all our cities_data_list in Odoo. One city correspond to one Odoo company."""
         city_vals_list = self.cities_data_list()
 
-        self.step1_2 = 0
-
         step1_2_start_timer = time.perf_counter()
 
         cities = self._create_by_chunk(
@@ -188,7 +206,6 @@ class AbstractImporter(ABC):
         """Populate the account data with the data in the chart."""
         account_account_ids = self.get_account_account_data()
 
-        self.step2_3 = 0
         step2_3_start_timer = time.perf_counter()
 
         accounts = self._create_by_chunk(
@@ -198,7 +215,7 @@ class AbstractImporter(ABC):
         self.city_account_account_ids = accounts
         step2_3_end_timer = time.perf_counter()
 
-        self.step2_3 = step2_3_end_timer - step2_3_start_timer
+        self.step2_3 += step2_3_end_timer - step2_3_start_timer
 
         return accounts
 
