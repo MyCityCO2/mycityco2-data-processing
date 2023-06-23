@@ -1,53 +1,88 @@
+# MyCityCO2 Data Processing
+
 ![GitHub CI](https://github.com/mycityco2/mycityco2-data-processing/actions/workflows/ci.yaml/badge.svg)
 [![License](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](LICENSE)
 
-# MyCityCO2 Data Processing
+## Table of Contents
 
+- [Description](#description)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
 ## Description
-MyCityCO2 Data Processing is a Python package designed to facilitate the import and export of municipality data from a country into Odoo, a popular enterprise resource planning (ERP) system. This package provides functionality to import data from municipalities, perform data processing tasks, and export the processed data to CSV format.
+
+MyCityCO2 Data Processing is a Python package designed to facilitate the import and export of municipality data from a country into Odoo, a popular Enterprise Resource Planning (ERP) system. This package provides functionality to import data from municipalities, perform data processing tasks, and export the processed data to CSV format.
+
+## Features
+
+- Import data from various municipalities.
+- Process and analyze the imported data.
+- Export the processed data to CSV format.
+- Command-line interface for easy interaction.
+- Integration with Odoo ERP system.
+
+## Prerequisites
+
+- Python 3.x
+- Access to an Odoo system (optional)
 
 ## Installation
-Make sure you have Python 3.x installed on your system. Clone this repository and run the following command to install the required dependencies:
 
-Usage
-To install the MyCityCO2 Data Processing package, use the following command:
-
-```shell
-$ pip install mycityco2-data-process
+1. Clone this repository to your local machine:
+```bash
+git clone https://github.com/MyCityCO2/mycityco2-data-processing.git
+```
+2. Navigate to the project directory:
+```bash
+cd mycityco2-data-processing
+```
+3. Install the required dependencies:
+```bash
+pip install mycityco2-data-process
 ```
 
-## Running the Project
-The MyCityCO2 Data Processing package is designed to be run as a command-line interface (CLI) application using the Typer module. Here are the steps to run the project:
+## Usage
 
-```shell
-$ mycityco2 run <importer> --departement <departement>
+MyCityCO2 Data Processing is designed to be run as a Command-Line Interface (CLI) application using the Typer module.
+
+To run the project, use the following command:
+```bash
+mycityco2 run <importer> --departement <departement>
 ```
 
-per example
-```shell
-$ mycityco2 run fr --departement 74
+For example:
+```bash
+mycityco2 run fr --departement 74
+```
+You can also use `--help` to get an overview of the project:
+```bash
+mycityco2 --help
 ```
 
-You can also do --help to get better view of the project.
+## Contributing
 
-
-## Contribution
-We welcome contributions to MyCityCO2 Data Processing. To add new features, please follow these steps:
+Contributions to MyCityCO2 Data Processing are welcomed. To add new features or fix bugs, please follow these steps:
 
 - Fork the mycityco2-data-processing repository on GitHub.
-- Create a new branch for your feature: `git checkout -b my-new-feature`.
-- Add your code and tests for the new feature.
-- Commit your changes: `git commit -m 'Add my new feature'`.
-- Push your changes to your forked repository: `git push origin my-new-feature`.
+- Create a new branch for your feature or bugfix: `git checkout -b my-new-feature-or-fix`.
+- Add your code and tests for the new feature or fix.
+- Commit your changes: `git commit -m 'Add my new feature or fix'`.
+- Push your changes to your forked repository: `git push origin my-new-feature-or-fix`.
 - Open a pull request to merge your changes into the main branch.
-- We will review your contribution as soon as possible!
+- The maintainers will review your contribution as soon as possible!
 
 ## License
+
 This project is licensed under the GNU Affero General Public License v3.0. Please refer to the LICENSE file for more information.
 
 ## Contact
-For any inquiries or feedback, please contact:
 
-Adam Bonnet (abo@open-net.ch)  
-Remy Zulauff (rzu@open-net.ch)
+For any inquiries, feedback, or issues, please contact:
+
+- Adam Bonnet (abo@open-net.ch)
+- Remy Zulauff (rzu@open-net.ch)
