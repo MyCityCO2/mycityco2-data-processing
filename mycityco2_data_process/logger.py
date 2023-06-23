@@ -25,23 +25,16 @@ def send_discord(
     webhook.execute()
 
 
-def setup():
+def setup(level: const.LogLevels = "DEBUG"):
     # Logger Params
     logger.remove()
+
+    logger.level("FTRACE", no=3, color="<blue>")
+
     logger.add(
         sys.stdout,
         enqueue=True,
         colorize=True,
         format=const.settings.LOGORU_FORMAT,
-        level="DEBUG",
+        level=level,
     )
-    # logger.add(sys.stdout, enqueue=True, colorize=True, format=const.settings.LOGORU_FORMAT, level=const.settings.LOGURU_LEVEL)
-
-    # logger.add(
-    #     lambda msg: send_discord(msg),
-    #     format="{message}",
-    #     colorize=False,
-    #     level="CRITICAL",  # POST message to discord when error
-    # )
-
-    logger.level("FTRACE", no=3, color="<blue>")

@@ -1,5 +1,5 @@
 [flake8]
 # black default
 max-line-length = 88
-extend-ignore = E203,E501,E800,E712
+extend-ignore = E203,E501,E800,E712,F401
 exclude=.venv,.git,dist,build,__pycache__

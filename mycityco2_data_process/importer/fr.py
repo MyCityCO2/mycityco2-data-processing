@@ -76,6 +76,7 @@ class FrImporter(AbstractImporter):
         self.rename_fields: dict = {"com_name": "name", "com_siren_code": "district"}
         self._dataset = dataset
         self._city_amount: int = 0
+        self._departement = departement
 
         self.url: str = CITIES_URL.format(limit, offset, departement)
 
@@ -89,15 +90,17 @@ class FrImporter(AbstractImporter):
 
     @depends("rename_fields")
     def get_cities(self):
-        data = self._dataset
+        # data = self._dataset
 
-        if not len(data):
-            data = requests.get(self.url).json().get("records")
+        # if not len(data):
+        data = requests.get(self.url).json().get("records")
 
         final_data = []
 
         for city in data:
             city = city.get("fields")
+            if self._dataset and city.get("com_name") not in self._dataset:
+                continue
 
             final_data.append({v: city.get(k) for k, v in self.rename_fields.items()})
 
@@ -372,6 +375,8 @@ class FrImporter(AbstractImporter):
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
+        logger.debug("Generating and Creating Account Asset Categories")
+
         account_asset_categories = {}
 
         account_journal_dict = {
@@ -458,6 +463,8 @@ class FrImporter(AbstractImporter):
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return self.account_asset
 
+        logger.debug("Generating and Creating Account Asset")
+
         step4_3_start_timer = time.perf_counter()
 
         account_asset_ids = []
@@ -506,6 +513,8 @@ class FrImporter(AbstractImporter):
     def account_asset_create_move(self):
         if not const.settings.ACCOUNT_ASSET_TOGGLE:
             return False
+
+        logger.debug("Posting Account Asset")
 
         step4_6_start_timer = time.perf_counter()
 

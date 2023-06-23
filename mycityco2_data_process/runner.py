@@ -144,6 +144,8 @@ def run(
         > **Etape 4.6** - Creation des pieces comptable pour les amortissement (Odoo) : {_get_formated_text(importer.step4_6, minute=True)}
     **Etape 5** - Exporting des donnees et traitement : {_get_formated_text(step5_elapsed_time, minute=True)}
 
+    **Département traité** : **{importer._departement}**
+
     **Temps total** : {_get_formated_text(total_elapsed_time, minute=True)}
 
     **Temps approximatif par ville** : {_get_formated_text((total_elapsed_time / importer._city_amount) if importer._city_amount > 0 else total_elapsed_time, minute=True)}

@@ -1,3 +1,4 @@
+from enum import Enum, unique
 from pathlib import Path
 from typing import Optional
 
@@ -63,3 +64,26 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+@unique
+class LogLevels(str, Enum):
+    ftrace = "ftrace"  # Otools-RPC (https://pypi.org/project/otools-rpc/)
+    trace = "trace"
+    debug = "debug"
+    info = "info"
+    success = "success"
+    warning = "warning"
+    error = "error"
+    critical = "critical"
+
+    def __str__(self):
+        return self.value
+
+
+@unique
+class ImporterList(str, Enum):
+    france = "fr"
+
+    def __str__(self):
+        return self.value
