@@ -7,7 +7,6 @@ from pydantic import BaseSettings, root_validator
 _path = Path(__file__).absolute().parent
 
 
-# TODO: Remove ENV_ before each settings
 class Settings(BaseSettings):
     class Config:
         env_prefix = "MCO2DP_"
@@ -20,7 +19,7 @@ class Settings(BaseSettings):
     LOGURU_LEVEL: str = "DEBUG"
 
     # Rename DELETE_DB and remove from here and add to cli argument
-    ENV_DELETE_DB_TOGGLE: bool = True
+    DELETE_DB_TOGGLE: bool = True
 
     URL: Optional[str]
     TEMPLATE_DB: Optional[str]
@@ -33,17 +32,7 @@ class Settings(BaseSettings):
     ACCOUNT_CHUNK_SIZE: int = 6000
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
-    # Remove from here and add to FrImporter
-    CARBON_FILE: str = (_path / "data/fr/fr_mapping_coa_exiobase.csv").as_posix()
-
-    # Remove from here and add to FrImporter
-    ACCOUNT_ASSET_TOGGLE: bool = True
-    ACCOUNT_ASSET_FILE: str = (
-        _path / "data/fr/fr_mapping_immo_exiobase.csv"
-    ).as_posix()
-
     YEAR: list = list(range(2010, 2022))
-    # YEAR: list = [2021]
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
 
     # Change to Export Operation Mode [local, distant]

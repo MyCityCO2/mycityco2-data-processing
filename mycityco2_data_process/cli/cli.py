@@ -16,7 +16,6 @@ from mycityco2_data_process.importer.fr import get_departement_size
 cli = typer.Typer(no_args_is_help=True)
 
 
-# TODO: Add importer type argument using Class like (https://gitlab.open-net.ch/rzu/ons-docker/-/blob/master/ons_docker/cli/main.py#L56) same to our callback
 @cli.command()
 def run(
     departement: str = typer.Option(

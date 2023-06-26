@@ -30,6 +30,15 @@ FR_PATH_FILE = const.settings.PATH / "data" / "fr"
 COA_CONDITION_FILE = FR_PATH_FILE / "coa_condition.csv"
 COA_CATEGORIES_FILE = FR_PATH_FILE / "coa_categories.csv"
 
+CARBON_FILE: str = (
+    const.settings.PATH / "data/fr/fr_mapping_coa_exiobase.csv"
+).as_posix()
+
+ACCOUNT_ASSET_TOGGLE: bool = True
+ACCOUNT_ASSET_FILE: str = (
+    const.settings.PATH / "data/fr/fr_mapping_immo_exiobase.csv"
+).as_posix()
+
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
 
 
@@ -83,6 +92,10 @@ class FrImporter(AbstractImporter):
     @property
     def source_name(self):
         return "API"
+
+    @property
+    def importer(self):
+        return "fr"
 
     @property
     def currency_name(self):
@@ -176,7 +189,7 @@ class FrImporter(AbstractImporter):
     def gen_carbon_factors(self):
         if not self.carbon_factor:
             categories = []
-            with open(const.settings.CARBON_FILE, newline="") as csvfile:
+            with open(CARBON_FILE, newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     categories.append(
@@ -372,7 +385,7 @@ class FrImporter(AbstractImporter):
         return self.account_move_line_ids
 
     def account_asset_create_categories(self):
-        if not const.settings.ACCOUNT_ASSET_TOGGLE:
+        if not ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
         logger.debug("Generating and Creating Account Asset Categories")
@@ -388,7 +401,7 @@ class FrImporter(AbstractImporter):
 
         created_categories_asset = []
 
-        with open(const.settings.ACCOUNT_ASSET_FILE, newline="") as csvfile:
+        with open(ACCOUNT_ASSET_FILE, newline="") as csvfile:
             reader = sorted(csv.DictReader(csvfile), key=lambda k: k["rule_order"])
             # logger.critical(reader)
 
@@ -460,7 +473,7 @@ class FrImporter(AbstractImporter):
         return self.account_asset_categories
 
     def populate_account_asset(self):
-        if not const.settings.ACCOUNT_ASSET_TOGGLE:
+        if not ACCOUNT_ASSET_TOGGLE:
             return self.account_asset
 
         logger.debug("Generating and Creating Account Asset")
@@ -511,7 +524,7 @@ class FrImporter(AbstractImporter):
         return self.account_asset
 
     def account_asset_create_move(self):
-        if not const.settings.ACCOUNT_ASSET_TOGGLE:
+        if not ACCOUNT_ASSET_TOGGLE:
             return False
 
         logger.debug("Posting Account Asset")

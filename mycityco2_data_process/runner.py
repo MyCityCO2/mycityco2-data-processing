@@ -175,7 +175,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
 
     # logger.error(const.settings.DB not in dbobject.list())
 
-    if const.settings.ENV_DELETE_DB_TOGGLE:
+    if const.settings.DELETE_DB_TOGGLE:
         dbmanager.drop(dbname)
 
     if dbname not in dbobject.list():
@@ -206,11 +206,11 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         )
     except Exception as e:
         utils.change_superuser_state(dbname, False)
-        if const.settings.ENV_DELETE_DB_TOGGLE:
+        if const.settings.DELETE_DB_TOGGLE:
             dbmanager.drop(dbname)
         raise Exception(e)
 
-    if const.settings.ENV_DELETE_DB_TOGGLE:
+    if const.settings.DELETE_DB_TOGGLE:
         dbmanager.drop(dbname)
 
     utils.change_superuser_state(dbname, False)

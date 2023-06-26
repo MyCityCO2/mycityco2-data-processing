@@ -120,6 +120,11 @@ class AbstractImporter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def importer(self):
+        """This need to return an string, you may choose what in the string but we'll do 'fr', 'ch'"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def currency_name(self):
         """Allow us to get the currency. You'll need to return an string like 'EUR'"""
         raise NotImplementedError()
