@@ -33,7 +33,7 @@ def change_superuser_state(dbname: str, state: bool = False) -> int:
 def retreive_dataset(cities):
     dataset_url = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows=-1&start=0&refine.dep_code=74"
 
-    res = requests.get(dataset_url)
+    res = requests.get(dataset_url, allow_redirects=False)
 
     content = res.content.decode("utf8")
 

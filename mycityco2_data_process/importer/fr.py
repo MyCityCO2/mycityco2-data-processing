@@ -66,7 +66,9 @@ def _get_chart_account(dictionnary: dict, result_list: list = []):
 
 def get_departement_size(departement: int = 74):
     cities_list = (
-        requests.get(CITIES_URL.format(-1, 0, departement)).json().get("records")
+        requests.get(CITIES_URL.format(-1, 0, departement), allow_redirects=False)
+        .json()
+        .get("records")
     )
     return len(cities_list)
 
@@ -106,7 +108,7 @@ class FrImporter(AbstractImporter):
         # data = self._dataset
 
         # if not len(data):
-        data = requests.get(self.url).json().get("records")
+        data = requests.get(self.url, allow_redirects=False).json().get("records")
 
         final_data = []
 
@@ -160,7 +162,9 @@ class FrImporter(AbstractImporter):
                     f"FR - No configuration found for nomenclature: {nomen}"
                 )
 
-            res = requests.get(CHART_OF_ACCOUNT_URL.format(nomen_param))
+            res = requests.get(
+                CHART_OF_ACCOUNT_URL.format(nomen_param), allow_redirects=False
+            )
             content = res.content
             data = xmltodict.parse(BeautifulSoup(content, "xml").prettify())
             account = data.get("Nomenclature").get("Nature").get("Comptes")
@@ -231,7 +235,8 @@ class FrImporter(AbstractImporter):
             res_nomen = requests.get(
                 url.format(
                     const.settings.YEAR[-1], refine_parameter, city.company_registry
-                )
+                ),
+                allow_redirects=False,
             )
 
             nomen = res_nomen.json()[0].get("nomen")
@@ -325,7 +330,8 @@ class FrImporter(AbstractImporter):
                 self.step3_1 += step3_1_end_timer - step3_1_start_timer
 
                 data = requests.get(
-                    url.format(year, city.company_registry, refine_parameter)
+                    url.format(year, city.company_registry, refine_parameter),
+                    allow_redirects=False,
                 ).json()
 
                 if isinstance(data, dict) and (
