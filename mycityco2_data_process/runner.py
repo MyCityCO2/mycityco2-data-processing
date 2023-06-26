@@ -156,7 +156,7 @@ def run(
         __**Total Errors : {const.settings.ERROR_COUNTER}**__
         """
 
-    send_discord(reporting, link=const.settings.ENV_URL + f"/web?db={importer._db}")
+    send_discord(reporting, link=const.settings.URL + f"/web?db={importer._db}")
 
     # Reporting
 
@@ -164,22 +164,22 @@ def run(
 def init(offset, dataset, instance, instance_number, instance_limit, departement):
     pooled = instance.index(offset) + 1
 
-    dbname = (const.settings.ENV_DB + "-" + str(pooled) + "-test").replace(
+    dbname = (const.settings.DB + "-" + str(pooled) + "-test").replace(
         "departement", f"{departement}"
     )
 
     # DBObject
-    dbmanager = DBManager(const.settings.ENV_URL, const.settings.ENV_MASTER_PASSWORD)
+    dbmanager = DBManager(const.settings.URL, const.settings.MASTER_PASSWORD)
 
     dbobject = dbmanager.dbobject
 
-    # logger.error(const.settings.ENV_DB not in dbobject.list())
+    # logger.error(const.settings.DB not in dbobject.list())
 
     if const.settings.ENV_DELETE_DB_TOGGLE:
         dbmanager.drop(dbname)
 
     if dbname not in dbobject.list():
-        dbmanager.duplicate(const.settings.ENV_TEMPLATE_DB, dbname)
+        dbmanager.duplicate(const.settings.TEMPLATE_DB, dbname)
     else:
         logger.info(f"DB {dbname} Already exist using this one")
     # DBManagement

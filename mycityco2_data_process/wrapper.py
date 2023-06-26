@@ -12,11 +12,11 @@ class CustomEnvironment:
     #     cls._self = super().__new__(cls)
     #     return cls._self
 
-    def __init__(self, dbname=const.settings.ENV_DB):
+    def __init__(self, dbname=const.settings.DB):
         self.env = Environment(
-            url=const.settings.ENV_URL,
-            username=const.settings.ENV_USERNAME,
-            password=const.settings.ENV_PASSWORD,
+            url=const.settings.URL,
+            username=const.settings.USERNAME,
+            password=const.settings.PASSWORD,
             db=dbname,
             auto_auth=False,
             logger=logger,

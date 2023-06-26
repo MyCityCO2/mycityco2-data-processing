@@ -22,12 +22,12 @@ class Settings(BaseSettings):
     # Rename DELETE_DB and remove from here and add to cli argument
     ENV_DELETE_DB_TOGGLE: bool = True
 
-    ENV_URL: Optional[str]
-    ENV_TEMPLATE_DB: Optional[str]
-    ENV_DB: Optional[str]
-    ENV_USERNAME: Optional[str]
-    ENV_PASSWORD: Optional[str]
-    ENV_MASTER_PASSWORD: Optional[str]
+    URL: Optional[str]
+    TEMPLATE_DB: Optional[str]
+    DB: Optional[str]
+    USERNAME: Optional[str]
+    PASSWORD: Optional[str]
+    MASTER_PASSWORD: Optional[str]
 
     CITY_CHUNK_SIZE: int = 1000
     ACCOUNT_CHUNK_SIZE: int = 6000

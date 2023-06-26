@@ -69,7 +69,7 @@ class FrImporter(AbstractImporter):
         offset: int = 0,
         departement: int = 74,
         env=None,
-        db=const.settings.ENV_DB,
+        db=const.settings.DB,
         dataset: list = [],
     ):
         super().__init__(env=env, db=db)
