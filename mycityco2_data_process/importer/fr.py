@@ -2,6 +2,7 @@ import csv
 import datetime
 import fnmatch
 import time
+from pathlib import Path
 
 import pandas
 import psycopg2
@@ -11,8 +12,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 
 from mycityco2_data_process import const
-
-from .base import AbstractImporter, depends
+from mycityco2_data_process.importer.base import AbstractImporter, depends
 
 NOMENCLATURE_PARAMS: dict = {
     "M14": "M14/M14_COM_SUP3500",
@@ -27,17 +27,13 @@ CHART_OF_ACCOUNT_URL: str = (
 
 FR_PATH_FILE = const.settings.PATH / "data" / "fr"
 
-COA_CONDITION_FILE = FR_PATH_FILE / "coa_condition.csv"
-COA_CATEGORIES_FILE = FR_PATH_FILE / "coa_categories.csv"
+COA_CONDITION_FILE: Path = FR_PATH_FILE / "coa_condition.csv"
+COA_CATEGORIES_FILE: Path = FR_PATH_FILE / "coa_categories.csv"
 
-CARBON_FILE: str = (
-    const.settings.PATH / "data/fr/fr_mapping_coa_exiobase.csv"
-).as_posix()
+CARBON_FILE: Path = FR_PATH_FILE / "fr_mapping_coa_exiobase.csv"
 
 ACCOUNT_ASSET_TOGGLE: bool = True
-ACCOUNT_ASSET_FILE: str = (
-    const.settings.PATH / "data/fr/fr_mapping_immo_exiobase.csv"
-).as_posix()
+ACCOUNT_ASSET_FILE: Path = FR_PATH_FILE / "fr_mapping_immo_exiobase.csv"
 
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
 
@@ -89,6 +85,10 @@ class FrImporter(AbstractImporter):
         self._city_amount: int = 0
         self._departement = departement
 
+        if self._dataset:
+            limit = -1
+            offset = 0
+
         self.url: str = CITIES_URL.format(limit, offset, departement)
 
     @property
@@ -105,6 +105,8 @@ class FrImporter(AbstractImporter):
 
     @depends("rename_fields")
     def get_cities(self):
+        # if self._dataset:
+        #     logger.error(self._dataset)
         # data = self._dataset
 
         # if not len(data):
@@ -193,7 +195,7 @@ class FrImporter(AbstractImporter):
     def gen_carbon_factors(self):
         if not self.carbon_factor:
             categories = []
-            with open(CARBON_FILE, newline="") as csvfile:
+            with open(CARBON_FILE.as_posix(), newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     categories.append(
@@ -280,6 +282,27 @@ class FrImporter(AbstractImporter):
 
         return account_account_ids
 
+    def get_account_move_data_from(self, year, siren, source):
+        step3_1_start_timer = time.perf_counter()
+        data = None
+        match (source.lower()):
+            case "api":
+                # Hardcoded year because the API change filter type on 2015
+                refine_parameter = "budget:BP" if year <= 2015 else "cbudg:1"
+
+                url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
+
+                data = requests.get(
+                    url.format(year, siren, refine_parameter),
+                    allow_redirects=False,
+                ).json()
+
+        step3_1_end_timer = time.perf_counter()
+        self.step3_1 += step3_1_end_timer - step3_1_start_timer
+
+        return data
+        # account_move_dataframe = pandas.read_csv()
+
     @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
         account_journal_dict = {
@@ -321,23 +344,9 @@ class FrImporter(AbstractImporter):
                     ]
                 )
 
-                # Hardcoded year because the API change filter type on 2015
-                refine_parameter = "budget:BP" if year <= 2015 else "cbudg:1"
-
-                step3_1_start_timer = time.perf_counter()
-                url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&refine=siren%3A{}&refine={}&timezone=UTC"
-                step3_1_end_timer = time.perf_counter()
-                self.step3_1 += step3_1_end_timer - step3_1_start_timer
-
-                data = requests.get(
-                    url.format(year, city.company_registry, refine_parameter),
-                    allow_redirects=False,
-                ).json()
-
-                if isinstance(data, dict) and (
-                    data.get("error_code") or data.get("status_code")
-                ):
-                    continue
+                data = self.get_account_move_data_from(
+                    year, city.company_registry, self.source_name
+                )
 
                 step3_2_start_timer = time.perf_counter()
                 for i in data:
@@ -394,7 +403,7 @@ class FrImporter(AbstractImporter):
         if not ACCOUNT_ASSET_TOGGLE:
             return self.account_asset_categories
 
-        logger.debug("Generating and Creating Account Asset Categories")
+        logger.debug(f"{self._db} - Generating and Creating Account Asset Categories")
 
         account_asset_categories = {}
 
@@ -407,7 +416,7 @@ class FrImporter(AbstractImporter):
 
         created_categories_asset = []
 
-        with open(ACCOUNT_ASSET_FILE, newline="") as csvfile:
+        with open(ACCOUNT_ASSET_FILE.as_posix(), newline="") as csvfile:
             reader = sorted(csv.DictReader(csvfile), key=lambda k: k["rule_order"])
             # logger.critical(reader)
 
@@ -482,7 +491,7 @@ class FrImporter(AbstractImporter):
         if not ACCOUNT_ASSET_TOGGLE:
             return self.account_asset
 
-        logger.debug("Generating and Creating Account Asset")
+        logger.debug(f"{self._db} - Generating and Creating Account Asset")
 
         step4_3_start_timer = time.perf_counter()
 
@@ -533,7 +542,7 @@ class FrImporter(AbstractImporter):
         if not ACCOUNT_ASSET_TOGGLE:
             return False
 
-        logger.debug("Posting Account Asset")
+        logger.debug(f"{self._db} - Posting Account Asset")
 
         step4_6_start_timer = time.perf_counter()
 

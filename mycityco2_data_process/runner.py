@@ -29,6 +29,8 @@ def run(
 
     # logger.warning(env.context)
 
+    # logger.error((offset))
+
     if offset == instance_number - 1:
         dataset = dataset[offset * chunksize : (offset + 1) * chunksize]
 
@@ -36,6 +38,9 @@ def run(
         dataset = dataset[
             offset * chunksize : (offset + 1) * chunksize + instance_remain
         ]
+
+    # logger.error(dataset)
+    # return
 
     importer = FrImporter(
         limit=instance_limit,
@@ -51,7 +56,7 @@ def run(
 
     step1_elapsed_time = (
         step2_elapsed_time
-    ) = step3_elapsed_time = step4_elapsed_time = 0
+    ) = step3_elapsed_time = step4_elapsed_time = step5_elapsed_time = 0
 
     try:
         step1_start_time = time.perf_counter()
@@ -80,9 +85,10 @@ def run(
             importer.account_asset_create_move()
         step4_end_time = time.perf_counter()
         step4_elapsed_time = step4_end_time - step4_start_time
-    except Exception:
+    except Exception as e:
         const.settings.ERROR_COUNTER += 1
         utils.change_superuser_state(dbname, False)
+        raise e
 
     # importer.gen_carbon_factors()
 
@@ -191,6 +197,9 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
     instance_remain = len(dataset) % instance_number
     chunksize = len(dataset) // instance_number
 
+    if dataset:
+        offset = pooled
+
     try:
         # main.run(offset, instance_limit, env.env, dbname, departement=departement)
         run(
@@ -206,11 +215,19 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         )
     except Exception as e:
         utils.change_superuser_state(dbname, False)
-        if const.settings.DELETE_DB_TOGGLE:
+        if (
+            const.settings.DELETE_DB_TOGGLE
+            and dbname in dbobject.list()
+            and not const.settings.NO_DELETE_DB
+        ):
             dbmanager.drop(dbname)
         raise Exception(e)
 
-    if const.settings.DELETE_DB_TOGGLE:
-        dbmanager.drop(dbname)
-
     utils.change_superuser_state(dbname, False)
+
+    if (
+        const.settings.DELETE_DB_TOGGLE
+        and dbname in dbobject.list()
+        and not const.settings.NO_DELETE_DB
+    ):
+        dbmanager.drop(dbname)

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     YEAR: list = list(range(2010, 2022))
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
 
+    NO_DELETE_DB = False
+
     # Change to Export Operation Mode [local, distant]
     SQL_PORT = 666
     # TODO: Operation mode, find other way

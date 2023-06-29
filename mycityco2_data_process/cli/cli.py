@@ -34,8 +34,12 @@ def run(
         0, "-l", "--limit", help="How many city per instance"
     ),
     force: bool = typer.Option(False, "-f", "--force", help="Remove warning error"),
+    no_delete_db: bool = typer.Option(
+        False, "-nd", "--no-delete-db", help="Skip the part where it delete the db"
+    ),
     importer: const.ImporterList = typer.Argument(help="What importer you want to use"),
 ):
+    const.settings.NO_DELETE_DB = no_delete_db
     start_time = time.perf_counter()
     match importer.name:
         case "france":
@@ -65,8 +69,8 @@ def run(
 
             func = functools.partial(
                 runner.init,
+                # dataset=["Viols-le-Fort","Saint-Vincent-de-Barbeyrargues","Sainte-Croix-de-Quintillargues","Salasc","Saturargues","Saussan","Saussines","Sauteyrargues","Sauvian","Sérignan","Servian","Sète","Siran","Sorbs","Soubès","Soumont","Sussargues","Taussac-la-Billière","Teyran","Thézan-lès-Béziers","Tourbes","Tressan","Usclas-d'Hérault","Usclas-du-Bosc","Vacquières","Vailhan","Vailhauquès","Valergues","Valflaunès","Valmascle","Valras-Plage","Valros","Vélieux","Vendargues","Vendémian","Vendres","Verreries-de-Moussans","Vias","Vic-la-Gardiole","Vieussan","Villemagne-l'Argentière","Villeneuve-lès-Béziers","Villeneuve-lès-Maguelone","Villeneuvette","Villespassans","Villetelle","Villeveyrac","Viols-en-Laval", "Montpellier"],
                 dataset=[],
-                # dataset=city,
                 instance=instance,
                 instance_number=instance_number,
                 instance_limit=instance_limit,
@@ -79,9 +83,9 @@ def run(
             except KeyboardInterrupt:
                 logger.info("Ctrl-c entered. Exiting")
 
-            logger_config.send_discord(
-                f"The '{departement}' has been imported and exported"
-            )
+            # logger_config.send_discord(
+            #     f"The '{departement}' has been imported and exported"
+            # )
         case _:
             logger.error("This importer doesn't exist")
             raise typer.Abort()
