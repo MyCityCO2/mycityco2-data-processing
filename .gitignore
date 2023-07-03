@@ -160,6 +160,7 @@ cython_debug/
 .idea/
 
 .vscode/
-.~lock
-temp_file/
+.~lock*
 qodana.yaml
+mycityco2_data_process/data/temp_file/*
+mycityco2_data_process/data/fr/departement/*.csv

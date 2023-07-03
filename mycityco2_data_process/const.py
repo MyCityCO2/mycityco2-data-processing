@@ -29,11 +29,14 @@ class Settings(BaseSettings):
     MASTER_PASSWORD: Optional[str]
 
     CITY_CHUNK_SIZE: int = 1000
-    ACCOUNT_CHUNK_SIZE: int = 6000
+    ACCOUNT_CHUNK_SIZE: int = 4000
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
     YEAR: list = list(range(2010, 2022))
+    # YEAR: list = [2010]
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
+
+    NO_DELETE_DB = False
 
     # Change to Export Operation Mode [local, distant]
     SQL_PORT = 666

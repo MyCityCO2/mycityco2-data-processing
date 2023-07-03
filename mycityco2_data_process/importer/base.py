@@ -63,11 +63,12 @@ class AbstractImporter(ABC):
             vals = vals_list[chunk * i : chunk * (i + 1)]
             created_record = self.env[model].create(vals)
 
-            created_record.read(fields=[k for k, _ in vals[0].items()])
+            if vals:
+                created_record.read(fields=[k for k, _ in vals[0].items()])
 
             vals_list_id |= created_record
 
-        logger.debug(f"{self._db} - All {model} chunk has been created")
+        logger.debug(f"{self._db} - All '{model}' chunk has been created")
         return vals_list_id
 
     def __init__(self, env: Environment = None, db: str = None):
