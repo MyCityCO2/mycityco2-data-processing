@@ -221,7 +221,10 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
             and not const.settings.NO_DELETE_DB
         ):
             dbmanager.drop(dbname)
-        raise e
+        raise Exception(e)
+
+    if const.settings.DELETE_DB_TOGGLE:
+        dbmanager.drop(dbname)
 
     utils.change_superuser_state(dbname, False)
 

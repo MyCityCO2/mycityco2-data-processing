@@ -86,9 +86,9 @@ def run(
             except KeyboardInterrupt:
                 logger.info("Ctrl-c entered. Exiting")
 
-            logger_config.send_discord(
-                f"The '{departement}' has been imported and exported"
-            )
+            # logger_config.send_discord(
+            #     f"The '{departement}' has been imported and exported"
+            # )
         case _:
             logger.error("This importer doesn't exist")
             raise typer.Abort()
