@@ -36,11 +36,7 @@ STEP = {"1": True, "2": True, "3": True}
 
 step3_city = []
 
-timeout = 0
 for file in os.scandir(PATH):
-    # if timeout >= 1:
-    #     continue
-    timeout = +1
     if not fnmatch.fnmatch(file.name, "*.csv"):
         continue
     logger.success(f"{file.name} - Reading CSV")
