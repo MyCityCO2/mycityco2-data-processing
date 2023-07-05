@@ -72,8 +72,6 @@ for file in os.scandir(PATH):
                 step2_error = +1
 
         for fields in REQUIRED_COLUMNS:
-            if fields == "postal":
-                continue
             csv_file[fields].apply(check_if_not_none)
 
         if step2_error >= 1:

@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 
 from mycityco2_data_process import const
+from mycityco2_data_process import logger as log_conf
 from mycityco2_data_process.importer.base import AbstractImporter, depends
 
 NOMENCLATURE_PARAMS: dict = {
@@ -46,14 +47,14 @@ def _get_chart_account(dictionnary: dict, result_list: list = []):
         for i in value_list:
             if isinstance(i, dict):
                 result = {"name": i.get("@Libelle")}
-                result_list.append(result | {"code": i.get("@Code")})
+                result_list.append(result | {"code": str(i.get("@Code"))})
 
                 _get_chart_account(i, result_list)
             else:
                 result_dict |= {i: value_list[i]}
         if len(result_dict) > 0:
             result = {"name": result_dict.get("@Libelle")}
-            result_list.append(result | {"code": result_dict.get("@Code")})
+            result_list.append(result | {"code": str(result_dict.get("@Code"))})
 
     result_list.sort(key=lambda x: x["code"])
 
@@ -235,7 +236,9 @@ class FrImporter(AbstractImporter):
 
             nomen = data[-1].get("nomen")
 
-            accounts_list = list(dict.fromkeys([data.get("compte") for data in data]))
+            accounts_list = list(
+                dict.fromkeys([str(data.get("compte")) for data in data])
+            )
 
             account_account_ids.append(
                 {
@@ -408,6 +411,8 @@ class FrImporter(AbstractImporter):
                 step3_2_start_timer = time.perf_counter()
                 for i in data:
 
+                    i["compte"] = str(i.get("compte"))
+
                     plan_identifier = account_dict.get(
                         i.get("compte"), default_plan_identifier
                     )
@@ -439,6 +444,25 @@ class FrImporter(AbstractImporter):
 
                 step3_3_start_timer = time.perf_counter()
                 logger.debug(f"{self._db} - Sending data for {city.name} for {year}")
+
+                credit = sum(
+                    account_move_lines.get("credit")
+                    for account_move_lines in city_account_move_line_ids
+                )
+                debit = sum(
+                    account_move_lines.get("debit")
+                    for account_move_lines in city_account_move_line_ids
+                )
+
+                difference = credit - debit
+
+                if round(difference, 2) != 0:
+                    log_conf.send_discord(
+                        msg=f"The city '**{city.name}**' from '**{self._departement}**' for '**{year}**' has an comptable problem : credit='{round(credit, 2)}', debit='{round(debit, 2)}', **diff='{round(difference, 2)}'**",
+                        error=True,
+                    )
+                    continue
+
                 account_move_lines_ids = self.env["account.move.line"].create(
                     city_account_move_line_ids
                 )

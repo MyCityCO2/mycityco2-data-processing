@@ -197,8 +197,8 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
     instance_remain = len(dataset) % instance_number
     chunksize = len(dataset) // instance_number
 
-    if dataset:
-        offset = pooled
+    # if dataset:
+    #     offset = pooled
 
     try:
         # main.run(offset, instance_limit, env.env, dbname, departement=departement)
@@ -221,7 +221,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
             and not const.settings.NO_DELETE_DB
         ):
             dbmanager.drop(dbname)
-        raise Exception(e)
+        raise e
 
     utils.change_superuser_state(dbname, False)
 

@@ -70,6 +70,7 @@ def run(
             func = functools.partial(
                 runner.init,
                 # dataset=["Viols-le-Fort","Saint-Vincent-de-Barbeyrargues","Sainte-Croix-de-Quintillargues","Salasc","Saturargues","Saussan","Saussines","Sauteyrargues","Sauvian","Sérignan","Servian","Sète","Siran","Sorbs","Soubès","Soumont","Sussargues","Taussac-la-Billière","Teyran","Thézan-lès-Béziers","Tourbes","Tressan","Usclas-d'Hérault","Usclas-du-Bosc","Vacquières","Vailhan","Vailhauquès","Valergues","Valflaunès","Valmascle","Valras-Plage","Valros","Vélieux","Vendargues","Vendémian","Vendres","Verreries-de-Moussans","Vias","Vic-la-Gardiole","Vieussan","Villemagne-l'Argentière","Villeneuve-lès-Béziers","Villeneuve-lès-Maguelone","Villeneuvette","Villespassans","Villetelle","Villeveyrac","Viols-en-Laval", "Montpellier"],
+                # dataset=["Aigrefeuille-sur-Maine", "Villemagne-l'Argentière"],
                 dataset=[],
                 instance=instance,
                 instance_number=instance_number,
