@@ -17,6 +17,7 @@ condition,external id carbon.factor,rule_order
 687*,ons_import_carbon_factor.null,5
 688*,ons_import_carbon_factor.null,5
 689*,ons_import_carbon_factor.null,5
+609*,ons_import_carbon_factor.null,5
 611,ons_import_carbon_factor.professional_services-type_other_business_services,10
 614,ons_import_carbon_factor.general_retail-type_retail_trade_except_of_motor_vehicles_motorcycles_repair_of_personal_household_goods_services,10
 617,ons_import_carbon_factor.professional_services-type_research_development_services,10
