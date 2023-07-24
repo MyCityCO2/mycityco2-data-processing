@@ -7,8 +7,6 @@ from pathlib import Path
 import pandas
 import psycopg2
 import requests
-import xmltodict
-from bs4 import BeautifulSoup
 from loguru import logger
 
 from mycityco2_data_process import const
@@ -25,6 +23,8 @@ NOMENCLATURE: list = list(NOMENCLATURE_PARAMS.keys())
 CHART_OF_ACCOUNT_URL: str = (
     "http://odm-budgetaire.org/composants/normes/2021/{}/planDeCompte.xml"
 )
+
+CHART_OF_ACCOUNT_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=economicref-france-nomenclature-actes-budgetaires-nature-comptes-millesime&q=&rows=-1&refine.plan_comptable={}"
 
 FR_PATH_FILE = const.settings.PATH / "data" / "fr"
 
@@ -151,44 +151,44 @@ class FrImporter(AbstractImporter):
 
     def gen_account_account_data(self):
         step2_1_start_timer = time.perf_counter()
-        nomens = NOMENCLATURE
-        logger.debug(f"{self._db} - Generating {', '.join(nomens)} account set")
+        nomens = ["M14"]
+        parameters = [
+            "M14-M14_COM_SUP3500",
+            "M14-M14_COM_INF500",
+            "M14-M14_COM_500_3500",
+        ]
 
         final_accounts = {}
 
+        existing_account = []
+
         for nomen in nomens:
-            logger.debug(f"{self._db} - Generating {nomen} account set")
-            nomen_param = NOMENCLATURE_PARAMS.get(nomen)
-            if not nomen_param:
-                raise AttributeError(
-                    f"FR - No configuration found for nomenclature: {nomen}"
+            final_accounts[nomen] = []
+            for parameter in parameters:
+                res = requests.get(
+                    CHART_OF_ACCOUNT_URL.format(parameter), allow_redirects=False
                 )
+                content = res.json()
 
-            res = requests.get(
-                CHART_OF_ACCOUNT_URL.format(nomen_param), allow_redirects=False
-            )
-            content = res.content
-            data = xmltodict.parse(BeautifulSoup(content, "xml").prettify())
-            account = data.get("Nomenclature").get("Nature").get("Comptes")
-            accounts = _get_chart_account(account, [])
+                accounts = content.get("records")
 
-            if not any(dictionnary["code"] == "65888" for dictionnary in accounts):
-                accounts.append(
-                    {
-                        "name": "Autres",
-                        "code": "65888",
-                    }
-                )
+                for account in accounts:
+                    account = account.get("fields")
 
-            final_accounts[nomen] = accounts
+                    if account.get("code_nature_cpte") not in existing_account:
+                        final_accounts[nomen].append(
+                            {
+                                "name": account.get("libelle_nature_cpte"),
+                                "code": account.get("code_nature_cpte"),
+                            }
+                        )
+                        existing_account.append(account.get("code_nature_cpte"))
 
         step2_1_end_timer = time.perf_counter()
         self.step2_1 += step2_1_end_timer - step2_1_start_timer
 
         self.account_account_ids = final_accounts
-        logger.debug(
-            f"{self._db} - All {', '.join(nomens)} account set has been generated"
-        )
+
         return final_accounts
 
     # TODO: Do list comprehension
@@ -236,6 +236,9 @@ class FrImporter(AbstractImporter):
 
             nomen = data[-1].get("nomen")
 
+            if nomen not in ["M14", "M14A"]:
+                continue
+
             accounts_list = list(
                 dict.fromkeys([str(data.get("compte")) for data in data])
             )
@@ -249,7 +252,7 @@ class FrImporter(AbstractImporter):
                 }
             )
 
-            for account in accounts.get(nomen):
+            for account in accounts.get("M14"):
                 name = account.get("name")
                 code = account.get("code")
 
@@ -373,7 +376,10 @@ class FrImporter(AbstractImporter):
         }
 
         for city in self.city_ids:
-            journal_bud = account_journal_dict[city.id]
+            journal_bud = account_journal_dict.get(city.id)
+
+            if not journal_bud:
+                continue
 
             account_account_ids = self.city_account_account_ids.filtered(
                 lambda element: element.company_id[0] == city.id
@@ -382,6 +388,9 @@ class FrImporter(AbstractImporter):
             account_dict = {}
             for account in account_account_ids:
                 account_dict[account.code] = account.id
+
+            if not account_dict:
+                continue
 
             default_plan_identifier = account_dict["000"]
 
@@ -410,7 +419,6 @@ class FrImporter(AbstractImporter):
 
                 step3_2_start_timer = time.perf_counter()
                 for i in data:
-
                     i["compte"] = str(i.get("compte"))
 
                     plan_identifier = account_dict.get(
@@ -511,7 +519,6 @@ class FrImporter(AbstractImporter):
                 )
                 carbon_id = self.env.ref(external_id)
                 for account in self.city_account_account_ids:
-
                     if fnmatch.fnmatch(account.code, row.get("Code")):
                         if (
                             f"{account.company_id[0]}-{account.code}"
@@ -699,11 +706,14 @@ class FrImporter(AbstractImporter):
         company.name AS city_name,
         account.code AS account_code,
         account.name AS account_name,
+        lines.name AS line_label,
         account.code||'-'||account.name AS account,
         CASE WHEN journal.code = 'IMMO' THEN 'INV' ELSE 'FCT' END AS journal_code,
         CASE WHEN journal.name = 'Immobilisations' THEN 'Investissement' ELSE 'Fonctionnement' END AS journal_name,
         EXTRACT ('Year' FROM lines.date) AS entry_year,
         lines.amount_currency AS entry_amount,
+        lines.name AS label,
+
         currency.name AS entry_currency,
         lines.carbon_balance AS entry_carbon_kgCO2e,
         factor.name AS emission_factor_name
