@@ -41,6 +41,8 @@ def setup(level: const.LogLevels = "DEBUG"):
     logger.add(
         sys.stdout,
         enqueue=True,
+        backtrace=True,
+        diagnose=True,
         colorize=True,
         format=const.settings.LOGORU_FORMAT,
         level=level,
