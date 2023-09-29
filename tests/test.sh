@@ -8,3 +8,4 @@ poetry run mycityco2 csv -m -n Departement-$2 --move
 
 poetry run mycityco2 run --departement=$3
 poetry run mycityco2 csv -m -n Departement-$3 --move
+testing
