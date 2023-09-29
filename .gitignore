@@ -163,6 +163,6 @@ cython_debug/
 .~lock*
 qodana.yaml
 mycityco2_data_process/data/temp_file/*
-mycityco2_data_process/data/fr/departement/*.csv
+mycityco2_data_process/data/fr/departement/*
 
 departement/

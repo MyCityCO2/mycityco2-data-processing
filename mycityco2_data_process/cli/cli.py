@@ -110,7 +110,7 @@ def csv(
     name: str = typer.Option("city_data", "-n", "--name"),
     move: bool = typer.Option(False, "--move"),
 ):
-    _path = const.settings.PATH / "data" / "temp_file"
+    _path = const.settings.TEMP_FILE_PATH
     if merge:
         # Merging csv #
         logger.info("Merging CSV")
@@ -119,10 +119,9 @@ def csv(
 
         csv_files = os.listdir(_path.resolve().as_posix())
         for file in csv_files:
-            if file.endswith(".csv") and file.startswith("temp"):
+            if file.endswith(".csv"):  # and file.startswith("temp")
                 logger.info(f"Merging '{file}'")
                 path = _path / file
-
                 csvfile = pandas.read_csv(path.as_posix())
                 dataframe = pandas.concat([dataframe, csvfile], ignore_index=True)
 
@@ -137,18 +136,22 @@ def csv(
     if move:
         logger.info("Starting moving the files")
         files = os.listdir(_path.resolve().as_posix())
-        dst_path = os.path.join(_path, name)
+        dst_path = const.settings.ARCHIVE_PATH / name
+
         if not os.path.exists(dst_path):
             os.mkdir(dst_path)
         for file in files:
             if file.endswith(".csv"):
                 logger.info(f"Moving file '{file}'...")
-                file_src_path = os.path.join(_path, file)
-                file_dst_path = os.path.join(dst_path, file)
+                file_src_path = const.settings.TEMP_FILE_PATH / file
+                if file != f"{name}.csv":
+                    file_dst_path = dst_path / file
+                    os.rename(file_src_path, file_dst_path)
+                else:
+                    file_data_path = const.settings.DATA_PATH / file
+                    os.rename(file_src_path, file_data_path)
 
-                os.rename(file_src_path, file_dst_path)
-
-        logger.info(f"All files mooved to '{dst_path}'")
+        logger.info(f"All files moved to '{dst_path}'")
 
 
 @cli.callback()

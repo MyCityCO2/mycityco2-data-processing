@@ -686,10 +686,10 @@ class FrImporter(AbstractImporter):
         postegres = (
             psycopg2.connect(
                 database=self._db,
-                port=const.settings.SQL_PORT,
-                host="localhost",
-                password="odoo",
-                user="odoo",
+                port=const.settings.SQL_LOCAL_PORT,
+                host=const.settings.SQL_LOCAL_HOST,
+                user=const.settings.SQL_LOCAL_USER,
+                password=const.settings.SQL_LOCAL_PASSWORD,
             )
             if const.settings.SQL_LOCAL
             else psycopg2.connect(

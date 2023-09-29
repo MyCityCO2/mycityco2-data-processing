@@ -43,8 +43,20 @@ class Settings(BaseSettings):
     SQL_PORT = 666
     # TODO: Operation mode, find other way
     SQL_LOCAL = False
+    SQL_LOCAL_HOST = "localhost"
+    SQL_LOCAL_PORT = 5432
+    SQL_LOCAL_USER = "opennet"
+    SQL_LOCAL_PASSWORD = "opennet"
 
     ERROR_COUNTER = 0
+
+    # Directories paths
+    TEMP_FILE_PATH = PATH / "data" / "temp_file"
+    DATA_PATH = TEMP_FILE_PATH / 'final_data'
+    CLEANED_PATH = TEMP_FILE_PATH / 'cleaned_data'
+    ARCHIVE_PATH = TEMP_FILE_PATH / 'archive'
+    TMP_DATA = TEMP_FILE_PATH / 'tmp_data'
+
 
     # Method
     @classmethod

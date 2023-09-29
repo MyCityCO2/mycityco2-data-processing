@@ -12,10 +12,10 @@ def change_superuser_state(dbname: str, state: bool = False) -> int:
 
     with psycopg2.connect(
         database=dbname,
-        port=const.settings.SQL_PORT,
-        host="localhost",
-        password="odoo",
-        user="odoo",
+        port=const.settings.SQL_LOCAL_PORT,
+        host=const.settings.SQL_LOCAL_HOST,
+        user=const.settings.SQL_LOCAL_USER,
+        password=const.settings.SQL_LOCAL_PASSWORD,
     ) if const.settings.SQL_LOCAL else psycopg2.connect(
         database=dbname, port=const.settings.SQL_PORT, host="/tmp", user="odoo"
     ) as connection:

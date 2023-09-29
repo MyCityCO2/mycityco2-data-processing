@@ -1,4 +1,5 @@
 import time
+import os
 
 from loguru import logger
 from otools_rpc.db_manager import DBManager
@@ -24,6 +25,17 @@ def run(
 ):
     start_time = time.time()
     env.authenticate()
+
+
+    # Creation of directories if needed
+    for p in [
+        const.settings.DATA_PATH,
+        const.settings.CLEANED_PATH,
+        const.settings.TMP_DATA,
+        const.settings.ARCHIVE_PATH
+    ]:
+        if not os.path.exists(p):
+            os.mkdir(p)
 
     # company = env['res.company'].sudo().search([])
 
@@ -185,6 +197,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         dbmanager.drop(dbname)
 
     if dbname not in dbobject.list():
+        logger.info(f"Creating database: {dbname}")
         dbmanager.duplicate(const.settings.TEMPLATE_DB, dbname)
     else:
         logger.info(f"DB {dbname} Already exist using this one")
