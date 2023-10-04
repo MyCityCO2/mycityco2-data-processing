@@ -1,3 +1,4 @@
+import os
 import time
 
 from loguru import logger
@@ -24,6 +25,16 @@ def run(
 ):
     start_time = time.time()
     env.authenticate()
+
+    # Creation of directories if needed
+    for p in [
+        const.settings.DATA_PATH,
+        const.settings.CLEANED_PATH,
+        const.settings.TMP_DATA,
+        const.settings.ARCHIVE_PATH,
+    ]:
+        if not os.path.exists(p):
+            os.mkdir(p)
 
     # company = env['res.company'].sudo().search([])
 
@@ -185,6 +196,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
         dbmanager.drop(dbname)
 
     if dbname not in dbobject.list():
+        logger.info(f"Creating database: {dbname}")
         dbmanager.duplicate(const.settings.TEMPLATE_DB, dbname)
     else:
         logger.info(f"DB {dbname} Already exist using this one")
@@ -214,7 +226,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
             dataset=dataset,
         )
     except Exception as e:
-        utils.change_superuser_state(dbname, False)
+        # utils.change_superuser_state(dbname, False)
         if (
             const.settings.DELETE_DB_TOGGLE
             and dbname in dbobject.list()

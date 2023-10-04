@@ -8,21 +8,20 @@ import pandas
 import psycopg2
 import requests
 from loguru import logger
+from typer import Abort
 
 from mycityco2_data_process import const
 from mycityco2_data_process import logger as log_conf
-from mycityco2_data_process.importer.base import AbstractImporter, depends
+from mycityco2_data_process.importer.base import AbstractImporter
 
 NOMENCLATURE_PARAMS: dict = {
-    "M14": "M14/M14_COM_SUP3500",
-    "M14A": "M14/M14_COM_INF500",
-    "M57": "M57/M57",
+    "M14": ["M14-M14_COM_SUP3500", "M14-M14_COM_INF500", "M14-M14_COM_500_3500"],
+    "M14A": ["M14-M14_COM_SUP3500", "M14-M14_COM_INF500", "M14-M14_COM_500_3500"],
+    "M57": ["M57-M57", "M57-M57_A", "M57-M57_D"],
+    "M57A": ["M57-M57", "M57-M57_A", "M57-M57_D"],
 }
 NOMENCLATURE: list = list(NOMENCLATURE_PARAMS.keys())
 
-CHART_OF_ACCOUNT_URL: str = (
-    "http://odm-budgetaire.org/composants/normes/2021/{}/planDeCompte.xml"
-)
 
 CHART_OF_ACCOUNT_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=economicref-france-nomenclature-actes-budgetaires-nature-comptes-millesime&q=&rows=-1&refine.plan_comptable={}"
 
@@ -37,6 +36,8 @@ ACCOUNT_ASSET_TOGGLE: bool = True
 ACCOUNT_ASSET_FILE: Path = FR_PATH_FILE / "fr_mapping_immo_exiobase.csv"
 
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
+
+M57_LAST_YEAR_CHECK: bool = False
 
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
@@ -97,7 +98,7 @@ class FrImporter(AbstractImporter):
     @property
     def source_name(self):
         """API or CSV"""
-        # return "API" # May reach rate limit
+        # return "API"  # May reach rate limit
         return "CSV"
 
     @property
@@ -108,7 +109,7 @@ class FrImporter(AbstractImporter):
     def currency_name(self):
         return "EUR"
 
-    @depends("rename_fields")
+    # @depends("rename_fields")
     def get_cities(self):
         data = requests.get(self.url, allow_redirects=False).json().get("records")
 
@@ -119,13 +120,57 @@ class FrImporter(AbstractImporter):
             if self._dataset and city.get("com_name") not in self._dataset:
                 continue
 
-            final_data.append({v: city.get(k) for k, v in self.rename_fields.items()})
+            cities_data = self.get_account_move_data_from(
+                siren=city.get("com_siren_code"), source=self.source_name
+            )
+
+            # TODO: remove because its for dev only
+            to_continue = True
+            for data in cities_data:
+                if M57_LAST_YEAR_CHECK:
+                    if data.get("exer") == str(const.settings.YEAR[-1]) and data.get(
+                        "nomen"
+                    ) not in [
+                        "M14",
+                        "M14A",
+                    ]:
+                        to_continue = False
+                        break
+
+            if to_continue:
+                continue
+            # TODO: remove because its for dev only
+
+            nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
+
+            if len(nomens) > 1:
+                for nomen in nomens:
+                    if nomen in NOMENCLATURE:
+                        city_value = {
+                            v: city.get(k) for k, v in self.rename_fields.items()
+                        }
+                        city_value |= {
+                            "name": city.get(k) + "|" + nomen
+                            for k, v in self.rename_fields.items()
+                            if v == "name"
+                        }
+
+                        final_data.append(city_value)
+
+            else:
+                final_data.append(
+                    {v: city.get(k) for k, v in self.rename_fields.items()}
+                )
 
         self._city_amount += len(final_data)
 
+        if not self._city_amount:
+            logger.error("No city find with this scope")
+            raise Abort()
+
         return final_data
 
-    @depends("city_ids")
+    # @depends("city_ids")
     def get_journal_data(self):
         journals_ids = []
 
@@ -151,20 +196,13 @@ class FrImporter(AbstractImporter):
 
     def gen_account_account_data(self):
         step2_1_start_timer = time.perf_counter()
-        nomens = ["M14"]
-        parameters = [
-            "M14-M14_COM_SUP3500",
-            "M14-M14_COM_INF500",
-            "M14-M14_COM_500_3500",
-        ]
-
         final_accounts = {}
 
         existing_account = []
 
-        for nomen in nomens:
+        for nomen in NOMENCLATURE:
             final_accounts[nomen] = []
-            for parameter in parameters:
+            for parameter in NOMENCLATURE_PARAMS[nomen]:
                 res = requests.get(
                     CHART_OF_ACCOUNT_URL.format(parameter), allow_redirects=False
                 )
@@ -215,7 +253,7 @@ class FrImporter(AbstractImporter):
 
         return self.carbon_factor
 
-    @depends("city_ids")
+    # @depends("city_ids")
     def get_account_account_data(self):
         logger.info(f"{self._db} - Generating account")
         accounts = self.gen_account_account_data()
@@ -235,12 +273,20 @@ class FrImporter(AbstractImporter):
                 continue
 
             nomen = data[-1].get("nomen")
+            if "|" in city.name:
+                nomen = city.name.split("|")[-1]
 
-            if nomen not in ["M14", "M14A"]:
+            if nomen not in NOMENCLATURE:
                 continue
 
             accounts_list = list(
-                dict.fromkeys([str(data.get("compte")) for data in data])
+                dict.fromkeys(
+                    [
+                        str(data.get("compte"))
+                        for data in data
+                        if data.get("nomen") == nomen
+                    ]
+                )
             )
 
             account_account_ids.append(
@@ -252,31 +298,32 @@ class FrImporter(AbstractImporter):
                 }
             )
 
-            for account in accounts.get("M14"):
-                name = account.get("name")
-                code = account.get("code")
+            for nomen in NOMENCLATURE:
+                for account in accounts.get(nomen):
+                    name = account.get("name")
+                    code = account.get("code")
 
-                if code in accounts_list:
-                    account_id = {
-                        "code": code,
-                        "name": name,
-                        "company_id": city.id,
-                        "account_type": const.settings.DEFAULT_ACCOUNT_TYPE,
-                    }
+                    if code in accounts_list:
+                        account_id = {
+                            "code": code,
+                            "name": name,
+                            "company_id": city.id,
+                            "account_type": const.settings.DEFAULT_ACCOUNT_TYPE,
+                        }
 
-                    for account in self.gen_carbon_factors():
-                        if fnmatch.fnmatch(code, account.get("condition")):
-                            account_id |= {
-                                "use_carbon_value": True,
-                                "carbon_in_is_manual": True,
-                                "carbon_in_factor_id": account.get("id").id,
-                                "carbon_in_compute_method": "monetary",
-                                "carbon_out_compute_method": "monetary",
-                            }
+                        for account in self.gen_carbon_factors():
+                            if fnmatch.fnmatch(code, account.get("condition")):
+                                account_id |= {
+                                    "use_carbon_value": True,
+                                    "carbon_in_is_manual": True,
+                                    "carbon_in_factor_id": account.get("id").id,
+                                    "carbon_in_compute_method": "monetary",
+                                    "carbon_out_compute_method": "monetary",
+                                }
 
-                            break
+                                break
 
-                    account_account_ids.append(account_id)
+                        account_account_ids.append(account_id)
 
         step2_2_end_timer = time.perf_counter()
         self.step2_2 += step2_2_end_timer - step2_2_start_timer
@@ -286,6 +333,8 @@ class FrImporter(AbstractImporter):
     def get_account_move_data_from(
         self, source: str, year: str = None, siren: str = None, only_nomen: bool = False
     ):
+        if not source:
+            source = self.source_name
         step3_1_start_timer = time.perf_counter()
         data = None
         match (source.lower()):
@@ -366,7 +415,7 @@ class FrImporter(AbstractImporter):
 
         return data
 
-    @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
+    # @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
         account_journal_dict = {
             record.company_id[0]: record
@@ -377,6 +426,10 @@ class FrImporter(AbstractImporter):
 
         for city in self.city_ids:
             journal_bud = account_journal_dict.get(city.id)
+
+            city_nomen = False
+            if "|" in city.name:
+                city_nomen = city.name.split("|")[-1]
 
             if not journal_bud:
                 continue
@@ -419,6 +472,9 @@ class FrImporter(AbstractImporter):
 
                 step3_2_start_timer = time.perf_counter()
                 for i in data:
+                    if city_nomen and i.get("nomen") != city_nomen:
+                        continue
+
                     i["compte"] = str(i.get("compte"))
 
                     plan_identifier = account_dict.get(
@@ -686,10 +742,10 @@ class FrImporter(AbstractImporter):
         postegres = (
             psycopg2.connect(
                 database=self._db,
-                port=const.settings.SQL_PORT,
-                host="localhost",
-                password="odoo",
-                user="odoo",
+                port=const.settings.SQL_LOCAL_PORT,
+                host=const.settings.SQL_LOCAL_HOST,
+                user=const.settings.SQL_LOCAL_USER,
+                password=const.settings.SQL_LOCAL_PASSWORD,
             )
             if const.settings.SQL_LOCAL
             else psycopg2.connect(
@@ -822,9 +878,9 @@ class FrImporter(AbstractImporter):
             )
 
             logger.debug(
-                f"{self._db} - Exporting dataframe to '{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv'"
+                f"{self._db} - Exporting dataframe to '{const.settings.TMP_DATA.as_posix()}/{self._db}.csv'"
             )
             dataframe.to_csv(
-                f"{const.settings.PATH.as_posix()}/data/temp_file/{self._db}.csv",
+                f"{const.settings.TMP_DATA.as_posix()}/{self._db}.csv",
                 index=False,
             )
