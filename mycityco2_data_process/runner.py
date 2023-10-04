@@ -1,5 +1,5 @@
-import time
 import os
+import time
 
 from loguru import logger
 from otools_rpc.db_manager import DBManager
@@ -26,13 +26,12 @@ def run(
     start_time = time.time()
     env.authenticate()
 
-
     # Creation of directories if needed
     for p in [
         const.settings.DATA_PATH,
         const.settings.CLEANED_PATH,
         const.settings.TMP_DATA,
-        const.settings.ARCHIVE_PATH
+        const.settings.ARCHIVE_PATH,
     ]:
         if not os.path.exists(p):
             os.mkdir(p)
@@ -227,7 +226,7 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
             dataset=dataset,
         )
     except Exception as e:
-        utils.change_superuser_state(dbname, False)
+        # utils.change_superuser_state(dbname, False)
         if (
             const.settings.DELETE_DB_TOGGLE
             and dbname in dbobject.list()

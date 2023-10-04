@@ -29,7 +29,7 @@ def send_discord(
 
     webhook.add_embed(embed)
 
-    webhook.execute()
+    webhook.execute()  # if error else None
 
 
 def setup(level: const.LogLevels = "DEBUG"):
