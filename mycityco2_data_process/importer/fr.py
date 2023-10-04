@@ -37,7 +37,7 @@ ACCOUNT_ASSET_FILE: Path = FR_PATH_FILE / "fr_mapping_immo_exiobase.csv"
 
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
 
-M57_LAST_YEAR_CHECK: bool = True
+M57_LAST_YEAR_CHECK: bool = False
 
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
