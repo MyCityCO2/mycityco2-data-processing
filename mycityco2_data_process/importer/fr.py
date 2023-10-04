@@ -125,9 +125,9 @@ class FrImporter(AbstractImporter):
             )
 
             # TODO: remove because its for dev only
-            to_continue = True
-            for data in cities_data:
-                if M57_LAST_YEAR_CHECK:
+            if M57_LAST_YEAR_CHECK:
+                to_continue = True
+                for data in cities_data:
                     if data.get("exer") == str(const.settings.YEAR[-1]) and data.get(
                         "nomen"
                     ) not in [
@@ -137,8 +137,8 @@ class FrImporter(AbstractImporter):
                         to_continue = False
                         break
 
-            if to_continue:
-                continue
+                if to_continue:
+                    continue
             # TODO: remove because its for dev only
 
             nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
@@ -339,36 +339,49 @@ class FrImporter(AbstractImporter):
         data = None
         match (source.lower()):
             case "api":
-                url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&timezone=UTC"
-
-                # Hardcoded year because the API change filter type on 2015
-                refine_parameter = (
-                    "&refine=budget:BP" if year <= 2015 else "&refine=cbudg:1"
-                )
-
-                siren_parameter = f"&refine=siren%3A{siren}"
-                limit_parameter = "&limit={}"
-
-                if only_nomen:
-                    data = (
-                        requests.get(
-                            url.format(str(year))
-                            + limit_parameter.format(-1)
-                            + siren_parameter,
-                            allow_redirects=False,
+                if not year:
+                    for current_year in const.settings.YEAR:
+                        data = self.get_account_move_data_from(
+                            source=source,
+                            year=current_year,
+                            siren=siren,
+                            only_nomen=only_nomen,
                         )
-                        .json()[0]
-                        .get("nomen")
+
+                        # return data
+                else:
+                    url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&timezone=UTC"
+
+                    # Hardcoded year because the API change filter type on 2015
+                    refine_parameter = (
+                        "&refine=budget:BP" if year <= 2015 else "&refine=cbudg:1"
                     )
 
-                else:
-                    data = requests.get(
-                        url.format(str(year))
-                        + refine_parameter
-                        + limit_parameter.format(-1),
-                        allow_redirects=False,
-                    ).json()
+                    siren_parameter = f"&refine=siren%3A{siren}"
+                    limit_parameter = "&limit={}"
 
+                    new_url = (
+                        url.format(str(year))
+                        + limit_parameter.format(-1)
+                        + siren_parameter
+                        + refine_parameter
+                    )
+
+                    if only_nomen:
+                        data = (
+                            requests.get(
+                                new_url,
+                                allow_redirects=False,
+                            )
+                            .json()[-1]
+                            .get("nomen")
+                        )
+
+                    else:
+                        data = requests.get(
+                            new_url,
+                            allow_redirects=False,
+                        ).json()
             case "csv":
                 if not len(self.account_move_dataframe.index):
                     account_move_dataframe = pandas.read_csv(
