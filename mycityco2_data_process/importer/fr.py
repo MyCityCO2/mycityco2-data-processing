@@ -107,6 +107,7 @@ class FrImporter(AbstractImporter):
 
     @property
     def currency_name(self):
+        # return "CHF"
         return "EUR"
 
     # @depends("rename_fields")

@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     ARCHIVE_PATH = TEMP_FILE_PATH / "archive"
     TMP_DATA = TEMP_FILE_PATH / "tmp_data"
 
+    COMMON_FILE_PATH = PATH / "data" / "common"
+    FACTOR_CARBON_MAPPED_FILE = COMMON_FILE_PATH / "carbon_factor_mapping.xlsx"
+
+    REQUIRED_ODOO_MODULE = ["onsp_co2"]
+
     # Method
     @classmethod
     @root_validator()
