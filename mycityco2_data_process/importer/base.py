@@ -146,7 +146,8 @@ class AbstractImporter(ABC):
             currency.write({"active": True})
 
         # Carbon Factor
-        carbon_factor = self.env["carbon.factor"].search_read([])
+        carbon_factor = []
+        # carbon_factor = self.env["carbon.factor"].search_read([])
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -185,9 +186,9 @@ class AbstractImporter(ABC):
                 model, name = xml_id.split(".")
                 xml_id_vals_list.append(
                     {
-                        "module": "co2",
+                        "module": model,
                         "name": name,
-                        "model": model,
+                        "model": ".".join(model.split("_")),
                     }
                 )
 
