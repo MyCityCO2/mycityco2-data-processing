@@ -433,7 +433,7 @@ class FrImporter(AbstractImporter):
     # @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
         account_journal_dict = {
-            record.company_id[0]: record
+            record.company_id.id: record
             for record in self.journals_ids.filtered(
                 lambda record: record.code == "BUD"
             )
@@ -450,7 +450,7 @@ class FrImporter(AbstractImporter):
                 continue
 
             account_account_ids = self.city_account_account_ids.filtered(
-                lambda element: element.company_id[0] == city.id
+                lambda element: element.company_id.id == city.id
             )
 
             account_dict = {}
@@ -571,7 +571,7 @@ class FrImporter(AbstractImporter):
         account_asset_categories_vals = []
 
         account_journal_dict = {
-            journal.company_id[0]: journal
+            journal.company_id.id: journal
             for journal in self.journals_ids.filtered(
                 lambda record: record.code == "IMMO"
             )
@@ -592,7 +592,7 @@ class FrImporter(AbstractImporter):
                 for account in self.city_account_account_ids:
                     if fnmatch.fnmatch(account.code, row.get("Code")):
                         if (
-                            f"{account.company_id[0]}-{account.code}"
+                            f"{account.company_id.id}-{account.code}"
                             in created_categories_asset
                         ):
                             continue
@@ -602,16 +602,15 @@ class FrImporter(AbstractImporter):
                             "name": account.name,
                             "code": "6811." + account.code,
                             "account_type": account.account_type,
-                            "company_id": account.company_id[0],
+                            "company_id": account.company_id.id,
                         }
 
-                        # TODO: Change carbon_in_monetary_currency_id to carbon_id.currency_id.id when migrate to otools-rpc >4
                         vals |= (
                             {
                                 "use_carbon_value": True,
                                 "carbon_in_is_manual": True,
                                 "carbon_in_factor_id": carbon_id.id,
-                                "carbon_in_monetary_currency_id": self.currency_id.id,
+                                "carbon_in_monetary_currency_id": carbon_id.carbon_monetary_currency_id.id,
                             }
                             if carbon_id
                             else {}
@@ -621,7 +620,7 @@ class FrImporter(AbstractImporter):
                             "account.account"
                         ].create(vals)
 
-                        journal_id = account_journal_dict[account.company_id[0]]
+                        journal_id = account_journal_dict[account.company_id.id]
 
                         step4_1_end_timer = time.perf_counter()
 
@@ -630,7 +629,7 @@ class FrImporter(AbstractImporter):
 
                         account_asset_categories_vals.append(
                             {
-                                "company_id": account.company_id[0],
+                                "company_id": account.company_id.id,
                                 "name": account.name,
                                 "method_number": row.get("Years", 0),
                                 "account_asset_id": account.id,
@@ -644,7 +643,7 @@ class FrImporter(AbstractImporter):
                         self.step4_2 += step4_2_end_timer - step4_2_start_timer
 
                         created_categories_asset.append(
-                            f"{account.company_id[0]}-{account.code}"
+                            f"{account.company_id.id}-{account.code}"
                         )
 
         categories = self._create_by_chunk(
@@ -652,7 +651,7 @@ class FrImporter(AbstractImporter):
         )
 
         for category in categories:
-            account_asset_categories[category.account_asset_id[0]] = category.id
+            account_asset_categories[category.account_asset_id.id] = category.id
 
         self.account_asset_categories = account_asset_categories
 
@@ -675,12 +674,12 @@ class FrImporter(AbstractImporter):
                 and lines.debit > 0
             ):
                 year = datetime.datetime.strptime(lines.date, "%Y-%m-%d").strftime("%Y")
-                profile_id = self.account_asset_categories.get(lines.account_id[0])
+                profile_id = self.account_asset_categories.get(lines.account_id.id)
                 account_asset = {
                     "name": lines.name + "." + year,
                     "purchase_value": lines.debit,
                     "date_start": str(int(year)) + "-01-01",
-                    "company_id": lines.company_id[0],
+                    "company_id": lines.company_id.id,
                     "profile_id": profile_id,
                 }
                 if profile_id:
