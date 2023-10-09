@@ -107,6 +107,7 @@ class FrImporter(AbstractImporter):
 
     @property
     def currency_name(self):
+        # return "CHF"
         return "EUR"
 
     # @depends("rename_fields")
@@ -242,7 +243,7 @@ class FrImporter(AbstractImporter):
                             "id": self.env.ref(
                                 row.get(
                                     "external id carbon.factor",
-                                    "ons_import_carbon_factor.null",
+                                    "carbon_factor.null",
                                 )
                             ),
                             "rule_order": row.get("rule_order", 0),
@@ -319,6 +320,7 @@ class FrImporter(AbstractImporter):
                                     "carbon_in_factor_id": account.get("id").id,
                                     "carbon_in_compute_method": "monetary",
                                     "carbon_out_compute_method": "monetary",
+                                    "carbon_in_monetary_currency_id": self.currency_id.id,
                                 }
 
                                 break
@@ -584,7 +586,7 @@ class FrImporter(AbstractImporter):
                 external_id = (
                     row.get("FE")
                     if row.get("FE") not in ("0", 0)
-                    else "ons_import_carbon_factor.null"
+                    else "carbon_factor.null"
                 )
                 carbon_id = self.env.ref(external_id)
                 for account in self.city_account_account_ids:
@@ -603,11 +605,13 @@ class FrImporter(AbstractImporter):
                             "company_id": account.company_id[0],
                         }
 
+                        # TODO: Change carbon_in_monetary_currency_id to carbon_id.currency_id.id when migrate to otools-rpc >4
                         vals |= (
                             {
                                 "use_carbon_value": True,
                                 "carbon_in_is_manual": True,
                                 "carbon_in_factor_id": carbon_id.id,
+                                "carbon_in_monetary_currency_id": self.currency_id.id,
                             }
                             if carbon_id
                             else {}

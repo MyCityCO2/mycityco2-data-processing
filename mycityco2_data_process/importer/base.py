@@ -2,6 +2,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+import pandas
+import typer
 from loguru import logger
 from otools_rpc.external_api import Environment
 
@@ -76,6 +78,9 @@ class AbstractImporter(ABC):
         self.env: Environment = env
         self._db = db
 
+        if not self.check_env():
+            raise typer.Abort()
+
         self.user_ids: Any = self.env["res.users"].search_read([])
         self.currency_id: Any = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
@@ -114,6 +119,87 @@ class AbstractImporter(ABC):
         self.step4_4 = 0
         self.step4_5 = 0
         self.step4_6 = 0
+
+    def check_env(self):
+        # Checking required module
+        for module_name in const.settings.REQUIRED_ODOO_MODULE:
+            module = self.env["ir.module.module"].search_read(
+                [("name", "=", module_name)]
+            )
+
+            if module.state != "installed":
+                logger.error(
+                    "Please install the module '{0}' since it's required".format(
+                        module.name
+                    )
+                )
+                return False
+
+        # Checking and activating currency
+        currency = self.env["res.currency"].search_read(
+            [("name", "=", self.currency_name), ("active", "in", [True, False])]
+        )
+        if not currency:
+            logger.error("Please select a existing currency")
+            return False
+        if not currency.active:
+            currency.write({"active": True})
+
+        # Carbon Factor
+        carbon_factor = []
+        # carbon_factor = self.env["carbon.factor"].search_read([])
+        if not len(carbon_factor):
+            logger.info("Creating Carbon Factor Records")
+            factor_carbon_mapping_df = pandas.DataFrame(
+                pandas.read_excel(const.settings.FACTOR_CARBON_MAPPED_FILE)
+            )
+            lis = factor_carbon_mapping_df.groupby(
+                by=["Id", "Sector"], group_keys=False
+            ).apply(lambda row: list(zip(list(row["Year"]), list(row["GES"]))))
+
+            factor_vals_list = []
+            xml_id_vals_list = []
+
+            EUR = self.env.ref("base.EUR")
+            for a, b in list(zip(lis.index, lis)):
+                xml_id, factor_name = a
+                factor_vals_list.append(
+                    {
+                        "name": factor_name,
+                        "carbon_compute_method": "monetary",
+                        "value_ids": [
+                            (
+                                0,
+                                0,
+                                {
+                                    "date": f"{year}-01-01",
+                                    "carbon_value": round(value / 1_000_000, 6),
+                                    "carbon_monetary_currency_id": EUR.id,
+                                    "source": "Exiobase",
+                                },
+                            )
+                            for year, value in b
+                        ],
+                    }
+                )
+
+                model, name = xml_id.split(".")
+                xml_id_vals_list.append(
+                    {
+                        "module": model,
+                        "name": name,
+                        "model": ".".join(model.split("_")),
+                    }
+                )
+
+            factor_ids = self.env["carbon.factor"].create(factor_vals_list)
+
+            for factor_id, xml_id_vals in list(zip(factor_ids, xml_id_vals_list)):
+                xml_id_vals["res_id"] = factor_id.id
+
+            self.env["ir.model.data"].create(xml_id_vals_list)
+
+        return True
 
     @abstractmethod
     def source_name(self):
