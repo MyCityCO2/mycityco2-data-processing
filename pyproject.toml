@@ -2,7 +2,7 @@
 name = "mycityco2-data-process"
 version = "0.1.0"
 description = ""
-authors = ["Adam Bonnet <abo@open-net.ch>", "Remy Zulauff <rzu@open-net.ch>"]
+authors = ["Adam Bonnet <contact@mycityco2.org>", "Remy Zulauff <contact@mycityco2.org>"]
 readme = "README.md"
 packages = [{include = "mycityco2_data_process"}]
 

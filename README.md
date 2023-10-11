@@ -23,25 +23,36 @@ MyCityCO2 Data Processing is a Python package designed to facilitate the import 
 - Import data from various municipalities.
 - Process and analyze the imported data.
 - Export the processed data to CSV format.
-- Command-line interface for easy interaction.
+- Command-line for easy interaction.
 - Integration with Odoo ERP system.
 
 ## Prerequisites
 
-- Python 3.x
-- Access to an Odoo system (optional)
+- Python > 3.8
+- Access to an Odoo system (not optional)
 
 ## Installation
 
 1. Clone this repository to your local machine:
+
 ```bash
 git clone https://github.com/MyCityCO2/mycityco2-data-processing.git
 ```
+
 2. Navigate to the project directory:
+
 ```bash
 cd mycityco2-data-processing
 ```
-3. Install the required dependencies:
+
+3. Run using poetry in dev mode:
+
+```bash
+poetry run mycityco2 run fr --departement=74
+```
+
+Or Install directly the package:
+
 ```bash
 pip install mycityco2-data-process
 ```
@@ -51,15 +62,19 @@ pip install mycityco2-data-process
 MyCityCO2 Data Processing is designed to be run as a Command-Line Interface (CLI) application using the Typer module.
 
 To run the project, use the following command:
+
 ```bash
 mycityco2 run <importer> --departement <departement>
 ```
 
 For example:
+
 ```bash
 mycityco2 run fr --departement 74
 ```
+
 You can also use `--help` to get an overview of the project:
+
 ```bash
 mycityco2 --help
 ```
@@ -84,5 +99,5 @@ This project is licensed under the GNU Affero General Public License v3.0. Pleas
 
 For any inquiries, feedback, or issues, please contact:
 
-- Adam Bonnet (abo@open-net.ch)
-- Remy Zulauff (rzu@open-net.ch)
+- Adam Bonnet (contact@mycityco2.org)
+- Remy Zulauff (contact@mycityco2.org)
