@@ -63,7 +63,7 @@ class AbstractImporter(ABC):
                 f"{self._db} - Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
             )
             vals = vals_list[chunk * i : chunk * (i + 1)]
-            vals_list_id = self.env[model].create(vals)
+            vals_list_id |= self.env[model].create(vals)
 
             # if vals:
             #     created_record.read(fields=[k for k, _ in vals[0].items()])
@@ -146,8 +146,7 @@ class AbstractImporter(ABC):
             currency.write({"active": True})
 
         # Carbon Factor
-        carbon_factor = []
-        # carbon_factor = self.env["carbon.factor"].search_read([])
+        carbon_factor = self.env["carbon.factor"].search_read([])
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -311,7 +310,7 @@ class AbstractImporter(ABC):
             "account.account", account_account_ids, const.settings.ACCOUNT_CHUNK_SIZE
         )
 
-        self.city_account_account_ids = accounts
+        self.city_account_account_ids |= accounts
         step2_3_end_timer = time.perf_counter()
 
         self.step2_3 += step2_3_end_timer - step2_3_start_timer
