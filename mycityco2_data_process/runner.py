@@ -1,7 +1,6 @@
 import os
 import time
 
-import typer
 from loguru import logger
 from otools_rpc.db_manager import DBManager
 
@@ -198,12 +197,13 @@ def init(offset, dataset, instance, instance_number, instance_limit, departement
 
     if dbname not in dbobject.list():
         if const.settings.TEMPLATE_DB not in dbobject.list():
-            logger.error(
-                "Cannot create db, please create a clean template db. Use '{0}' as DBName using 'admin' as username and password".format(
-                    const.settings.TEMPLATE_DB
-                )
+            if const.settings.USERNAME in ["__system__"]:
+                const.settings.USERNAME = "admin"
+            dbmanager.create(
+                const.settings.TEMPLATE_DB,
+                const.settings.USERNAME,
+                const.settings.PASSWORD,
             )
-            raise typer.Abort()
         logger.info(f"Creating database: {dbname}")
         dbmanager.duplicate(const.settings.TEMPLATE_DB, dbname)
     else:

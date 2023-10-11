@@ -129,8 +129,8 @@ class AbstractImporter(ABC):
 
             if module.state != "installed":
                 logger.error(
-                    "Please install the module '{0}' since it's required".format(
-                        module.name
+                    "Please install the module '{0}' on the db '{1}' since it's required".format(
+                        module.name, const.settings.TEMPLATE_DB
                     )
                 )
                 return False
