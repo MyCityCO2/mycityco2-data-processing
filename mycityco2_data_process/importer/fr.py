@@ -767,7 +767,7 @@ class FrImporter(AbstractImporter):
             else psycopg2.connect(
                 database=self._db,
                 port=const.settings.SQL_PORT,
-                host="/tmp",
+                host="localhost",
                 user="odoo",
             )
         )

@@ -62,6 +62,20 @@ class Settings(BaseSettings):
 
     REQUIRED_ODOO_MODULE = ["onsp_co2"]
 
+    # Docker parameters
+    DOCKER_CONTAINER_START_NAME: str = "mycityco2_container_"
+    DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "odoo"
+    DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "db"
+
+    DOCKER_NETWORK_NAME: str = "mycityco2_network"
+
+    DOCKER_ODOO_IMAGES: str = "odoo:16.0"
+    DOCKER_POSTGRES_IMAGES: str = "postgres:13"
+
+    DOCKER_ODOO_VOLUMES_NAME: str = "mycityco2_volumes_odoo_data"
+
+    OPERATION_MODE: str = "docker"
+
     # Method
     @classmethod
     @root_validator()

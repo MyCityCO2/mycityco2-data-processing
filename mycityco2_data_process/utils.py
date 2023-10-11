@@ -1,10 +1,12 @@
 import json
+import time
 
 import psycopg2
 import requests
 from loguru import logger
 
 from mycityco2_data_process import const
+from mycityco2_data_process.wrapper import CustomEnvironment
 
 
 def change_superuser_state(dbname: str, state: bool = False) -> int:
@@ -17,7 +19,11 @@ def change_superuser_state(dbname: str, state: bool = False) -> int:
         user=const.settings.SQL_LOCAL_USER,
         password=const.settings.SQL_LOCAL_PASSWORD,
     ) if const.settings.SQL_LOCAL else psycopg2.connect(
-        database=dbname, port=const.settings.SQL_PORT, host="/tmp", user="odoo"
+        database=dbname,
+        port=const.settings.SQL_PORT,
+        host="localhost",
+        user="odoo",
+        password="odoo",
     ) as connection:
         cursor = connection.cursor()
         cursor.execute(f"update res_users set active = {state} where id = 1;")
@@ -54,3 +60,17 @@ def retreive_dataset(cities):
             dataset.append(city_dict)
 
     return dataset
+
+
+def wait_for_odoo() -> bool:
+    env = CustomEnvironment()
+    while True:
+        try:
+            env.env.common.version()
+            return True
+        except (ConnectionRefusedError, ConnectionResetError):
+            time.sleep(1)
+            continue
+        except Exception as err:
+            logger.error(f"Odoo server not running {err}")
+            return False
