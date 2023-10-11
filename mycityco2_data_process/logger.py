@@ -29,14 +29,12 @@ def send_discord(
 
     webhook.add_embed(embed)
 
-    webhook.execute()  # if error else None
+    webhook.execute() if error else None
 
 
 def setup(level: const.LogLevels = "DEBUG"):
     # Logger Params
     logger.remove()
-
-    logger.level("FTRACE", no=3, color="<blue>")
 
     logger.add(
         sys.stdout,

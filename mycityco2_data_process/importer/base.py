@@ -63,12 +63,12 @@ class AbstractImporter(ABC):
                 f"{self._db} - Creating '{model}' chunk {i + 1}/{chunk_number}. Chunk size {chunk}."
             )
             vals = vals_list[chunk * i : chunk * (i + 1)]
-            created_record = self.env[model].create(vals)
+            vals_list_id = self.env[model].create(vals)
 
-            if vals:
-                created_record.read(fields=[k for k, _ in vals[0].items()])
+            # if vals:
+            #     created_record.read(fields=[k for k, _ in vals[0].items()])
 
-            vals_list_id |= created_record
+            # vals_list_id |= created_record
 
         logger.debug(f"{self._db} - All '{model}' chunk has been created")
         return vals_list_id
@@ -199,6 +199,13 @@ class AbstractImporter(ABC):
 
             self.env["ir.model.data"].create(xml_id_vals_list)
 
+        # logger.error("here")
+        # logger.error(
+        #     self.env["res.users"]
+        #     .search([("login", "=", "__system__")])
+        #     .write({"password": "abo"})
+        # )
+        # logger.error("here")
         return True
 
     @abstractmethod
