@@ -60,7 +60,27 @@ class Settings(BaseSettings):
     COMMON_FILE_PATH = PATH / "data" / "common"
     FACTOR_CARBON_MAPPED_FILE = COMMON_FILE_PATH / "carbon_factor_mapping.xlsx"
 
-    REQUIRED_ODOO_MODULE = ["onsp_co2"]
+    REQUIRED_ODOO_MODULE = [
+        "onsp_co2_account_asset_management",
+        "account_asset_management",
+        "onsp_co2",
+    ]
+
+    # module_name, git link (with .git at the end), branch
+    GIT_MODULE: list[tuple] = [
+        (
+            "onsp_co2_bundle",
+            "git@github.com:MyCityCO2/mycityco2-engine.git",
+            "16.0",
+        ),
+        (
+            "account-financial-tools",
+            "git@github.com:OCA/account-financial-tools.git",
+            "16.0",
+        ),
+        ("reporting-engine", "git@github.com:OCA/reporting-engine.git", "16.0"),
+    ]
+    GIT_PATH = _path / "data" / "common" / "modules"
 
     # Docker parameters
     DOCKER_CONTAINER_START_NAME: str = "mycityco2_container_"
@@ -73,6 +93,8 @@ class Settings(BaseSettings):
     DOCKER_POSTGRES_IMAGES: str = "postgres:13"
 
     DOCKER_ODOO_VOLUMES_NAME: str = "mycityco2_volumes_odoo_data"
+
+    ODOO_CONF_PATH: Path = PATH / "data" / "common" / "odoo.conf"
 
     OPERATION_MODE: str = "docker"
 

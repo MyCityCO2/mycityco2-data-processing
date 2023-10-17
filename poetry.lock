@@ -814,13 +814,13 @@ et-xmlfile = "*"
 
 [[package]]
 name = "otools-rpc"
-version = "0.4.2"
+version = "0.4.4"
 description = "A tool to interact with Odoo's external API."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "otools-rpc-0.4.2.tar.gz", hash = "sha256:94933fcdc3c51b63614617062bd75ba83da3c62d2cb4a9be813e324715c17180"},
-    {file = "otools_rpc-0.4.2-py3-none-any.whl", hash = "sha256:a8eba66afff49f1e83ef87f413f7cd97f3ab2bf19513e06748419f9c543e2942"},
+    {file = "otools-rpc-0.4.4.tar.gz", hash = "sha256:eca0cc88762b501e7a1979b56076aced3b1c390f30eb8ee2cadeeb1b8a39143d"},
+    {file = "otools_rpc-0.4.4-py3-none-any.whl", hash = "sha256:a122c3931b76512a1e9c9ba5b209ece00044f9da0ca3a10c667181ec21813bfb"},
 ]
 
 [package.dependencies]
@@ -1664,4 +1664,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5e1db52de782670c8216614834fbdf4aef614dae65cba7908052e88019c19c43"
+content-hash = "08726cc1e74208f41452abdf97ec39461d63763de115d05e2c700d4a720421aa"

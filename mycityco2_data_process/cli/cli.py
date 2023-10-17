@@ -10,11 +10,13 @@ import typer
 from docker.types import Mount
 from loguru import logger
 from multiprocess.pool import Pool
+from otools_rpc.db_manager import DBManager
 
 from mycityco2_data_process import const
 from mycityco2_data_process import logger as logger_config
 from mycityco2_data_process import runner, utils
 from mycityco2_data_process.importer.fr import get_departement_size
+from mycityco2_data_process.wrapper import CustomEnvironment
 
 cli = typer.Typer(no_args_is_help=True)
 
@@ -94,8 +96,6 @@ def run(
 
             except KeyboardInterrupt:
                 logger.info("Ctrl-c entered. Exiting")
-                if const.settings.OPERATION_MODE == "docker":
-                    stop()
 
             logger_config.send_discord(
                 f"The '{departement}' has been imported and exported"
@@ -165,10 +165,17 @@ def csv(
 
 
 @cli.command()
-def start():
+def start(
+    install_module: bool = typer.Option(
+        False,
+        "-i",
+        "--install",
+        help="Do you want to direclty install the odoo module",
+    ),
+):
     client = docker.from_env()
 
-    working_directory = os.getcwd()
+    utils._clone_repos()
 
     containers_name_mapping = {
         container.name: container for container in client.containers.list(all=True)
@@ -239,21 +246,27 @@ def start():
                         "POSTGRES_USER": "odoo",
                     },
                 )
+
             elif "odoo" in container_name:
+                _addons_path_docker = "/mnt/extra-addons/"
+                addons = [
+                    _addons_path_docker + addon
+                    for addon, _, _ in const.settings.GIT_MODULE
+                ]
                 _create_docker_container(
                     container=container,
-                    command="-c /var/lib/odoo/odoo.conf -d mycityco2_default --without-demo all -i base",
+                    command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
                     image=const.settings.DOCKER_ODOO_IMAGES,
                     port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
                     mounts=[
-                        # Mount(
-                        #     source=volume_name,
-                        #     target="/home/odoo/data",
-                        #     type="volume",
-                        # ),
                         Mount(
-                            source=f"{working_directory}/mycityco2_data_process/data/common/odoo.conf",
+                            source=const.settings.ODOO_CONF_PATH.as_posix(),
                             target="/var/lib/odoo/odoo.conf",
+                            type="bind",
+                        ),
+                        Mount(
+                            source=const.settings.GIT_PATH.as_posix(),
+                            target="/mnt/extra-addons",
                             type="bind",
                         ),
                     ],
@@ -275,19 +288,46 @@ def start():
     const.settings.TEMPLATE_DB = "mycityco2_default"
     const.settings.USERNAME = "admin"
     const.settings.PASSWORD = "admin"
+    const.settings.SQL_LOCAL_USER = "odoo"
+    const.settings.SQL_LOCAL_PASSWORD = "odoo"
     const.settings.SQL_PORT = "5432"
     const.settings.MASTER_PASSWORD = "adminadminadmin"
-
-    logger.error(const.settings.URL)
 
     logger.info("Waiting for the odoo from docker")
     if not utils.wait_for_odoo():
         logger.error("Odoo response failed")
         raise typer.Abort()
 
-    # dbmanager = DBManager(const.settings.URL, "adminadminadmin")
+    dbmanager = DBManager(const.settings.URL, const.settings.MASTER_PASSWORD)
 
-    # dbmanager.duplicate(const.settings.TEMPLATE_DB, "test")
+    if const.settings.TEMPLATE_DB not in dbmanager.dbobject.list():
+        logger.info(f"[ODOO] Creating template database '{const.settings.TEMPLATE_DB}'")
+        dbmanager.create(
+            const.settings.TEMPLATE_DB,
+            const.settings.USERNAME,
+            const.settings.PASSWORD,
+            demo=False,
+        )
+
+    if install_module:
+        env = CustomEnvironment(const.settings.TEMPLATE_DB).env
+        env.authenticate()
+
+        modules = env["ir.module.module"].search_read(
+            [("name", "in", const.settings.REQUIRED_ODOO_MODULE)],
+            fields=["state", "name"],
+        )
+        for module in modules:
+            if not module or module.state != "installed":
+                module.button_immediate_install()
+
+        modules.read(fields=["state", "name"])
+    else:
+        logger.info(
+            f"[ODOO] Please install the module(s): {', '.join(const.settings.REQUIRED_ODOO_MODULE)}. If not already installed"
+        )
+
+    logger.info("[DOCKER] The odoo docker can be access from " + const.settings.URL)
 
 
 @cli.command()

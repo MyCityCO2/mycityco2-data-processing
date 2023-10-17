@@ -36,6 +36,8 @@ def setup(level: const.LogLevels = "DEBUG"):
     # Logger Params
     logger.remove()
 
+    logger.level("FTRACE", no=3, color="<blue>")
+
     logger.add(
         sys.stdout,
         enqueue=True,

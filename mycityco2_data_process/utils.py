@@ -1,8 +1,10 @@
 import json
+import os
 import time
 
 import psycopg2
 import requests
+from git import Repo
 from loguru import logger
 
 from mycityco2_data_process import const
@@ -74,3 +76,15 @@ def wait_for_odoo() -> bool:
         except Exception as err:
             logger.error(f"Odoo server not running {err}")
             return False
+
+
+def _clone_repos() -> bool:
+    for module_name, link, branch in const.settings.GIT_MODULE:
+        path = const.settings.GIT_PATH / module_name
+        if not os.path.isdir(path):
+            Repo.clone_from(
+                link,
+                path.as_posix(),
+                branch=branch,
+                depth=1,
+            )
