@@ -127,10 +127,10 @@ class AbstractImporter(ABC):
                 [("name", "=", module_name)]
             )
 
-            if module.state != "installed":
+            if not module or module.state != "installed":
                 logger.error(
                     "Please install the module '{0}' on the db '{1}' since it's required".format(
-                        module.name, const.settings.TEMPLATE_DB
+                        module_name, const.settings.TEMPLATE_DB
                     )
                 )
                 return False
