@@ -5,6 +5,7 @@ import os
 import time
 
 import docker
+import docker.errors as docker_errors
 import pandas
 import typer
 from docker.types import Mount
@@ -200,16 +201,6 @@ def start(
 
     network = network_name_mapping[network_name]
 
-    volumes_name_mapping = {volume.name: volume for volume in client.volumes.list()}
-    volume_name = const.settings.DOCKER_ODOO_VOLUMES_NAME
-
-    if not volumes_name_mapping.get(volume_name):
-        volumes_name_mapping[volume_name] = client.volumes.create(
-            name=volume_name, driver="local"
-        )
-
-    # volume = volumes_name_mapping[volume_name]
-
     def _create_docker_container(
         image, container, port, env=False, mounts=False, command=False
     ):
@@ -277,7 +268,13 @@ def start(
 
             if container_docker.status != "running":
                 logger.debug(f"[DOCKER] Starting {container_name} docker")
-                container_docker.start()
+                try:
+                    container_docker.start()
+                except docker_errors.APIError:
+                    logger.error(
+                        f"[DOCKER] The container '{container}' could not start, please check if port is already used."
+                    )
+                    raise typer.Abort()
             container_docker.reload()
 
     odoo_container = containers_name_mapping[const.settings.DOCKER_ODOO_CONTAINER_NAME]
@@ -321,7 +318,6 @@ def start(
             if not module or module.state != "installed":
                 module.button_immediate_install()
 
-        modules.read(fields=["state", "name"])
     else:
         logger.info(
             f"[ODOO] Please install the module(s): {', '.join(const.settings.REQUIRED_ODOO_MODULE)}. If not already installed"
