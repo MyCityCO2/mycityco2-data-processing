@@ -13,10 +13,10 @@ jobs:
   call-linting-pipeline:
     name: Linting
     uses: ./.github/workflows/lint.yaml
-  # call-release-pipeline:
-  #   name: Release
-  #   needs:
-  #     - call-testing-pipeline
-  #     - call-linting-pipeline
-  #   uses: ./.github/workflows/release.yaml
-  #   secrets: inherit
+  call-release-pipeline:
+    name: Release
+    needs:
+      - call-testing-pipeline
+      - call-linting-pipeline
+    uses: ./.github/workflows/release.yaml
+    secrets: inherit
