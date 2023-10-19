@@ -878,7 +878,7 @@ class FrImporter(AbstractImporter):
             #     dataframe["entry_carbon_kgco2e"] / dataframe["habitant"]
             # )
 
-            dataframe = dataframe[dataframe["category_name"] != False]
+            dataframe = dataframe[dataframe["category_name"] is not False]
             # Category
 
             logger.debug(f"{self._db} - Sorting dataframe")

@@ -176,7 +176,7 @@ def start(
 ):
     client = docker.from_env()
 
-    utils._clone_repos()
+    utils.clone_repos()
 
     containers_name_mapping = {
         container.name: container for container in client.containers.list(all=True)
