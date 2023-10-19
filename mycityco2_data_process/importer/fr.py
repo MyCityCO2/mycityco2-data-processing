@@ -144,24 +144,16 @@ class FrImporter(AbstractImporter):
 
             nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
 
-            if len(nomens) > 1:
-                for nomen in nomens:
-                    if nomen in NOMENCLATURE:
-                        city_value = {
-                            v: city.get(k) for k, v in self.rename_fields.items()
-                        }
-                        city_value |= {
-                            "name": city.get(k) + "|" + nomen
-                            for k, v in self.rename_fields.items()
-                            if v == "name"
-                        }
+            for nomen in nomens:
+                if nomen in NOMENCLATURE:
+                    city_value = {v: city.get(k) for k, v in self.rename_fields.items()}
+                    city_value |= {
+                        "name": city.get(k) + "|" + nomen
+                        for k, v in self.rename_fields.items()
+                        if v == "name"
+                    }
 
-                        final_data.append(city_value)
-
-            else:
-                final_data.append(
-                    {v: city.get(k) for k, v in self.rename_fields.items()}
-                )
+                    final_data.append(city_value)
 
         self._city_amount += len(final_data)
 
@@ -767,8 +759,9 @@ class FrImporter(AbstractImporter):
             else psycopg2.connect(
                 database=self._db,
                 port=const.settings.SQL_PORT,
-                host="/tmp",
+                host="localhost",
                 user="odoo",
+                password="odoo",
             )
         )
 
@@ -885,7 +878,7 @@ class FrImporter(AbstractImporter):
             #     dataframe["entry_carbon_kgco2e"] / dataframe["habitant"]
             # )
 
-            dataframe = dataframe[dataframe["category_name"] != False]
+            dataframe = dataframe[dataframe["category_name"] is not False]
             # Category
 
             logger.debug(f"{self._db} - Sorting dataframe")

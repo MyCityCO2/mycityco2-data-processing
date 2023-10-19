@@ -10,7 +10,6 @@ YEAR = [2010]  # 2010 to 2021
 DEPARTEMENT = ["01"]
 
 for year in YEAR:
-
     refine_parameter = "&refine=budget:BP" if int(year) <= 2015 else "&refine=cbudg:1"
     refine_url = url.format(year) + refine_parameter
 

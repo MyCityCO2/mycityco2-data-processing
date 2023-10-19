@@ -5,6 +5,7 @@ from typing import Any
 import pandas
 import typer
 from loguru import logger
+from otools_rpc.db_manager import DBManager
 from otools_rpc.external_api import Environment
 
 from mycityco2_data_process import const
@@ -78,6 +79,8 @@ class AbstractImporter(ABC):
         self.env: Environment = env
         self._db = db
 
+        self.dbmanager = DBManager(const.settings.URL, const.settings.MASTER_PASSWORD)
+
         if not self.check_env():
             raise typer.Abort()
 
@@ -127,10 +130,10 @@ class AbstractImporter(ABC):
                 [("name", "=", module_name)]
             )
 
-            if module.state != "installed":
+            if not module or module.state != "installed":
                 logger.error(
-                    "Please install the module '{0}' on the db '{1}' since it's required".format(
-                        module.name, const.settings.TEMPLATE_DB
+                    "Please install the module '{0}' on the db '{1}' since it's required. Accessible at {2}/web?db={1}".format(
+                        module_name, const.settings.TEMPLATE_DB, const.settings.URL
                     )
                 )
                 return False
@@ -147,6 +150,8 @@ class AbstractImporter(ABC):
 
         # Carbon Factor
         carbon_factor = self.env["carbon.factor"].search_read([])
+        # logger.error(carbon_factor)
+        # raise typer.Abort()
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -190,7 +195,6 @@ class AbstractImporter(ABC):
                         "model": ".".join(model.split("_")),
                     }
                 )
-
             factor_ids = self.env["carbon.factor"].create(factor_vals_list)
 
             for factor_id, xml_id_vals in list(zip(factor_ids, xml_id_vals_list)):
@@ -258,9 +262,9 @@ class AbstractImporter(ABC):
                 "name": city.get("name"),
                 "company_registry": city.get("district", False),
                 "user_ids": self.user_ids.ids,
-                "external_report_layout_id": self.external_layout_id.id,
-                "carbon_in_compute_method": "monetary",  # IN Future, NOT NEEDED
-                "carbon_out_compute_method": "monetary",  # IN Future, NOT NEEDED
+                # "external_report_layout_id": self.external_layout_id.id,
+                # "carbon_in_compute_method": "monetary",  # IN Future, NOT NEEDED
+                # "carbon_out_compute_method": "monetary",  # IN Future, NOT NEEDED
             }
             for city in cities
         ]

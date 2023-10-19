@@ -4,15 +4,20 @@ import math
 import os
 import time
 
+import docker
+import docker.errors as docker_errors
 import pandas
 import typer
+from docker.types import Mount
 from loguru import logger
 from multiprocess.pool import Pool
+from otools_rpc.db_manager import DBManager
 
 from mycityco2_data_process import const
 from mycityco2_data_process import logger as logger_config
-from mycityco2_data_process import runner
+from mycityco2_data_process import runner, utils
 from mycityco2_data_process.importer.fr import get_departement_size
+from mycityco2_data_process.wrapper import CustomEnvironment
 
 cli = typer.Typer(no_args_is_help=True)
 
@@ -67,6 +72,9 @@ def run(
 
                     if not confirmation:
                         raise typer.Abort()
+
+            if const.settings.OPERATION_MODE == "docker":
+                start()
 
             func = functools.partial(
                 runner.init,
@@ -155,6 +163,195 @@ def csv(
                     os.rename(file_src_path, file_data_path)
 
         logger.info(f"All files moved to '{dst_path}'")
+
+
+@cli.command()
+def start(
+    install_module: bool = typer.Option(
+        False,
+        "-i",
+        "--install",
+        help="Do you want to direclty install the odoo module",
+    ),
+):
+    client = docker.from_env()
+
+    utils.clone_repos()
+
+    containers_name_mapping = {
+        container.name: container for container in client.containers.list(all=True)
+    }
+    CONTAINERS = [
+        const.settings.DOCKER_ODOO_CONTAINER_NAME,
+        const.settings.DOCKER_POSTGRES_CONTAINER_NAME,
+    ]
+
+    network_name_mapping = {network.name: network for network in client.networks.list()}
+    network_name = const.settings.DOCKER_NETWORK_NAME
+
+    if not network_name_mapping.get(network_name):
+        logger.debug(f"[DOCKER] Creating {network_name} network")
+        network_name_mapping[network_name] = client.networks.create(
+            name=network_name,
+            driver="bridge",
+            check_duplicate=True,
+            attachable=True,
+            scope="global",
+        )
+
+    network = network_name_mapping[network_name]
+
+    def _create_docker_container(
+        image, container, port, env=False, mounts=False, command=False
+    ):
+        container_name = container.split(const.settings.DOCKER_CONTAINER_START_NAME)[-1]
+        con = client.containers.create(
+            image,
+            name=container,
+            network=network.name,
+            hostname=container_name,
+            ports=port,
+            tty=True,
+            environment=env if env else None,
+            mounts=mounts if mounts else None,
+            command=command if command else None,
+        )
+        containers_name_mapping[container] = con
+        return con
+
+    for container in CONTAINERS:
+        container_name = container.rsplit(
+            const.settings.DOCKER_CONTAINER_START_NAME, maxsplit=1
+        )[-1]
+        if not containers_name_mapping.get(container):
+            logger.debug(f"[DOCKER] Creating {container_name} docker")
+
+            if "db" in container_name:
+                _create_docker_container(
+                    container=container,
+                    image=const.settings.DOCKER_POSTGRES_IMAGES,
+                    port={"5432/tcp": [{"HostIp": "0.0.0.0", "HostPort": "5432"}]},
+                    env={
+                        "POSTGRES_DB": "postgres",
+                        "POSTGRES_PASSWORD": "odoo",
+                        "POSTGRES_USER": "odoo",
+                    },
+                )
+
+            elif "odoo" in container_name:
+                _addons_path_docker = "/mnt/extra-addons/"
+                addons = [
+                    _addons_path_docker + addon
+                    for addon, _, _ in const.settings.GIT_MODULE
+                ]
+                _create_docker_container(
+                    container=container,
+                    command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
+                    image=const.settings.DOCKER_ODOO_IMAGES,
+                    port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
+                    mounts=[
+                        Mount(
+                            source=const.settings.ODOO_CONF_PATH.as_posix(),
+                            target="/var/lib/odoo/odoo.conf",
+                            type="bind",
+                        ),
+                        Mount(
+                            source=const.settings.GIT_PATH.as_posix(),
+                            target="/mnt/extra-addons",
+                            type="bind",
+                        ),
+                    ],
+                )
+
+        if containers_name_mapping.get(container):
+            container_docker = containers_name_mapping.get(container)
+
+            if container_docker.status != "running":
+                logger.debug(f"[DOCKER] Starting {container_name} docker")
+                try:
+                    container_docker.start()
+                except docker_errors.APIError:
+                    logger.error(
+                        f"[DOCKER] The container '{container}' could not start, please check if port is already used."
+                    )
+                    raise typer.Abort()
+            container_docker.reload()
+
+    odoo_container = containers_name_mapping[const.settings.DOCKER_ODOO_CONTAINER_NAME]
+    odoo_network = odoo_container.attrs["NetworkSettings"]["Networks"][network.name]
+    odoo_ip_adress = odoo_network["IPAddress"]
+
+    const.settings.URL = f"http://{odoo_ip_adress}:8069"
+    const.settings.TEMPLATE_DB = "mycityco2_default"
+    const.settings.USERNAME = "admin"
+    const.settings.PASSWORD = "admin"
+    const.settings.SQL_LOCAL_USER = "odoo"
+    const.settings.SQL_LOCAL_PASSWORD = "odoo"
+    const.settings.SQL_PORT = "5432"
+    const.settings.MASTER_PASSWORD = "adminadminadmin"
+
+    logger.info("Waiting for the odoo from docker")
+    if not utils.wait_for_odoo():
+        logger.error("Odoo response failed")
+        raise typer.Abort()
+
+    dbmanager = DBManager(const.settings.URL, const.settings.MASTER_PASSWORD)
+
+    if const.settings.TEMPLATE_DB not in dbmanager.dbobject.list():
+        logger.info(f"[ODOO] Creating template database '{const.settings.TEMPLATE_DB}'")
+        dbmanager.create(
+            const.settings.TEMPLATE_DB,
+            const.settings.USERNAME,
+            const.settings.PASSWORD,
+            demo=False,
+        )
+
+    if install_module:
+        env = CustomEnvironment(const.settings.TEMPLATE_DB).env
+        env.authenticate()
+
+        modules = env["ir.module.module"].search_read(
+            [("name", "in", const.settings.REQUIRED_ODOO_MODULE)],
+            fields=["state", "name"],
+        )
+        for module in modules:
+            if not module or module.state != "installed":
+                module.button_immediate_install()
+
+    else:
+        logger.info(
+            f"[ODOO] Please install the module(s): {', '.join(const.settings.REQUIRED_ODOO_MODULE)}. If not already installed"
+        )
+
+    logger.info("[DOCKER] The odoo docker can be access from " + const.settings.URL)
+
+
+@cli.command()
+def stop():
+    client = docker.from_env()
+
+    containers_name_mapping = {
+        container.name: container for container in client.containers.list(all=True)
+    }
+
+    network_name_mapping = {network.name: network for network in client.networks.list()}
+
+    CONTAINERS = [
+        const.settings.DOCKER_ODOO_CONTAINER_NAME,
+        const.settings.DOCKER_POSTGRES_CONTAINER_NAME,
+    ]
+
+    NETWORKS = [const.settings.DOCKER_NETWORK_NAME]
+
+    for container_name in CONTAINERS:
+        if containers_name_mapping.get(container_name):
+            logger.debug(f"[DOCKER] Stopping and deleting container {container_name}")
+            client.containers.get(container_name).remove(force=True)
+
+    for networks_name in NETWORKS:
+        if network_name_mapping.get(networks_name):
+            logger.debug(f"[DOCKER] Stopping and deleting network {networks_name}")
+            client.networks.get(const.settings.DOCKER_NETWORK_NAME).remove()
 
 
 @cli.command()

@@ -20,5 +20,7 @@ class CustomEnvironment:
             db=dbname,
             auto_auth=False,
             logger=logger,
-            cache_default_expiration=10000000000,
+            # cache_default_expiration=10000000000,
+            cache_no_expiration=True,
+            # cache_enabled=True,
         )
