@@ -3,6 +3,9 @@
 docs-build:
 	@mkdocs build
 
+docs-local:
+	@mkdocs serve
+
 docs-deploy:
 	@mkdocs gh-deploy -m "docs: update documentation" -v --force
 

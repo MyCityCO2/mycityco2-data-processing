@@ -22,6 +22,7 @@ MyCityCO2 Data Processing is a Python package designed to facilitate the import 
 
 ## Features
 
+- Create on-demand docker to host Odoo (WEB), and Postgres (DB)
 - Import data from various municipalities.
 - Process and analyze the imported data.
 - Export the processed data to CSV format.
@@ -30,60 +31,24 @@ MyCityCO2 Data Processing is a Python package designed to facilitate the import 
 
 ## Prerequisites
 
-- Python > 3.8
-- Access to an Odoo system (not optional)
+- [Python](https://www.python.org/downloads/) >= 3.8 (Python Recommanded Version is 3.10)
+- [Docker](https://docs.docker.com/engine/install/)
 
-## Installation
+## Todo
 
-1. Clone this repository to your local machine:
+### Base
+- &cross; Add API Option to command run
 
-```bash
-git clone https://github.com/MyCityCO2/mycityco2-data-processing.git
-```
+### France Importer
+#### France's Todo will appear here
 
-2. Navigate to the project directory:
+## License
 
-```bash
-cd mycityco2-data-processing
-```
-
-3. Run using poetry in dev mode:
-
-```bash
-poetry run mycityco2 run fr --departement=74
-```
-
-Or Install directly the package:
-
-```bash
-pip install mycityco2-data-process
-```
-
-## Usage
-
-MyCityCO2 Data Processing is designed to be run as a Command-Line Interface (CLI) application using the Typer module.
-
-To run the project, use the following command:
-
-```bash
-mycityco2 run <importer> --departement <departement>
-```
-
-For example:
-
-```bash
-mycityco2 run fr --departement 74
-```
-
-You can also use `--help` to get an overview of the project:
-
-```bash
-mycityco2 --help
-```
+This project is licensed under the GNU Affero General Public License v3.0. Please refer to the LICENSE file for more information.
 
 ## Contributing
 
-Contributions to MyCityCO2 Data Processing are welcomed. To add new features or fix bugs, please follow these steps:
+Contributions to MyCityCo2 Data Processing are welcomed. To add new features or fix bugs, please follow these steps:
 
 - Fork the mycityco2-data-processing repository on GitHub.
 - Create a new branch for your feature or bugfix: `git checkout -b my-new-feature-or-fix`.
@@ -92,10 +57,6 @@ Contributions to MyCityCO2 Data Processing are welcomed. To add new features or 
 - Push your changes to your forked repository: `git push origin my-new-feature-or-fix`.
 - Open a pull request to merge your changes into the main branch.
 - The maintainers will review your contribution as soon as possible!
-
-## License
-
-This project is licensed under the GNU Affero General Public License v3.0. Please refer to the LICENSE file for more information.
 
 ## Contact
 
