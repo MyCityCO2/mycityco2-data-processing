@@ -79,7 +79,7 @@ def wait_for_odoo() -> bool:
 
 
 def clone_repos() -> bool:
-    for module_name, link, branch in const.settings.GIT_MODULE:
+    for module_name, link, branch in const.settings.GIT_REPOS:
         path = const.settings.GIT_PATH / module_name
         if not os.path.isdir(path):
             Repo.clone_from(

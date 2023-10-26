@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     ]
 
     # module_name, git link (with .git at the end), branch
-    GIT_MODULE: list[tuple] = [
+    GIT_REPOS: list[tuple] = [
         (
             "onsp_co2_bundle",
             "git@github.com:MyCityCO2/mycityco2-engine.git",

@@ -243,7 +243,7 @@ def start(
                     _mount_path_docker = "/mnt/extra-addons/"
                     addons = [
                         _mount_path_docker + addon
-                        for addon, _, _ in const.settings.GIT_MODULE
+                        for addon, _, _ in const.settings.GIT_REPOS
                     ]
                     _create_docker_container(
                         container=container,
