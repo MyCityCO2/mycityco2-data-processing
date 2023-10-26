@@ -230,7 +230,7 @@ def start(
                 case const.settings.DOCKER_POSTGRES_CONTAINER_NAME:
                     _create_docker_container(
                         container=container,
-                        image=const.settings.DOCKER_POSTGRES_IMAGES,
+                        image=const.settings.DOCKER_POSTGRES_IMAGE,
                         port={"5432/tcp": [{"HostIp": "0.0.0.0", "HostPort": "5432"}]},
                         env={
                             "POSTGRES_DB": "postgres",
@@ -248,7 +248,7 @@ def start(
                     _create_docker_container(
                         container=container,
                         command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
-                        image=const.settings.DOCKER_ODOO_IMAGES,
+                        image=const.settings.DOCKER_ODOO_IMAGE,
                         port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
                         mounts=[
                             Mount(

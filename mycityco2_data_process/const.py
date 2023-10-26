@@ -89,8 +89,8 @@ class Settings(BaseSettings):
 
     DOCKER_NETWORK_NAME: str = "mycityco2_network"
 
-    DOCKER_ODOO_IMAGES: str = "odoo:16.0"
-    DOCKER_POSTGRES_IMAGES: str = "postgres:13"
+    DOCKER_ODOO_IMAGE: str = "odoo:16.0"
+    DOCKER_POSTGRES_IMAGE: str = "postgres:13"
 
     ODOO_CONF_PATH: Path = PATH / "data" / "common" / "odoo.conf"
 
