@@ -2,6 +2,68 @@
 
 
 
+## v0.1.1 (2023-10-26)
+
+### Chore
+
+* chore(base.py): remove commented out code and unused logger statements for cleaner code ([`1cfeebf`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/1cfeebfa40672d644be361be973c04a9b2a30afc))
+
+* chore(importer/fr.py): fix typo in comment
+chore(importer/fr.py): add docstring to get_account_move_data_from method explaining its parameters and return value
+chore(importer/fr.py): improve readability and organization of get_account_move_data_from method
+chore(importer/fr.py): remove unnecessary comment and return statement in get_account_move_data_from method
+chore(importer/fr.py): improve readability and organization of code in get_account_move_data_from method ([`a510f3e`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/a510f3ec8cd32f0bd2b6be9b206cab7f0c6c31be))
+
+* chore(fr.py): correct error message from &#34;No city find with this scope&#34; to &#34;No city found with this scope&#34; for proper grammar and clarity. Fix typo ([`0d8ae59`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/0d8ae59871b63fea0b145c0e65c6dec644ee5c4e))
+
+* chore(fr.py): simplify the code by removing unnecessary list conversion in the nomens variable assignment ([`80ecdca`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/80ecdca1cfc583cf4f37f8004e68686764ce3757))
+
+* chore(fr.py): remove unused M57_LAST_YEAR_CHECK variable, comment dev code, and add docstring ([`7d7ec70`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/7d7ec704e275df9f33014eacd5b2d8ace890c9cd))
+
+* chore(cli.py): change WARNING_YEAR variable content to YEARS_TO_COMPUTE to improve semantics
+chore(const.py): change YEAR variable name to YEARS_TO_COMPUTE to improve semantics
+chore(fr.py): change YEAR variable name to YEARS_TO_COMPUTE to improve semantics
+chore(fr.py): use YEARS_TO_COMPUTE[-1] instead of const.settings.YEAR[-1] for better readability
+chore(fr.py): use YEARS_TO_COMPUTE instead of const.settings.YEAR for better readability ([`6f3e684`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/6f3e6841e5ddf286d3b2d9e821b031584a035ac7))
+
+* chore(pyproject.toml): update bandit skips to exclude additional security checks
+
+The skips configuration in the [tool.bandit] section of pyproject.toml has been updated to include the following additional security checks: B320, B408, B410, B318, B306, B603, B307, B404, B101. This is done to exclude these specific checks from the bandit security analysis tool. ([`e798e17`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/e798e17c13ac5db2da30bb44d6e7c7a059d35d0e))
+
+### Fix
+
+* fix: Update chore element in order to fix some coding mistake
+
+fix: Update chore element in order to fix some coding mistake ([`a69c5a9`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/a69c5a9ed15ea23270d7cab90bf16c2eddfe1390))
+
+* fix(importer/base.py): refactor check_env method to improve readability and error handling
+
+The check_env method in the AbstractImporter class has been refactored to improve readability and error handling. Instead of using a search_read method to check if the required Odoo modules are installed, the method now uses a search method with the &#34;in&#34; operator to search for all modules with names in the REQUIRED_ODOO_MODULE list. If any of the modules are not installed, an error message is logged with the module name, template database, and URL for installation. The method now returns False if any module is not installed. ([`72ae980`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/72ae980541f3cd2cf67c1870825ce1259cd4e019))
+
+* fix(cli.py): fix typo in constant name DOCKER_POSTGRES_IMAGE
+fix(cli.py): fix typo in constant name DOCKER_ODOO_IMAGE ([`44515b9`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/44515b93de8730a048a5225a9c2e21db534bfeab))
+
+* fix(cli.py): change variable name from DOCKER_CONTAINER_START_NAME to DOCKER_CONTAINER_PREFIX for consistency with const.py ([`010ae64`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/010ae64ff2076df0816a4d778d3ee0bdb8470a00))
+
+* fix(cli.py): refactor container creation logic to use a match statement for improved readability and maintainability ([`548c00e`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/548c00efa4537b06612ff841849de38477626fc0))
+
+### Refactor
+
+* refactor(base.py): remove unnecessary code that reads fields of created journals
+
+The code was previously reading the fields of the created journals, but this is unnecessary and can be removed. ([`b0ea036`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/b0ea03648ca46fbf4f266e15dd05f983cf0e60be))
+
+* refactor(cli.py): rename GIT_MODULE to GIT_REPOS in order to improve code readability and semantics
+refactor(const.py): rename GIT_MODULE to GIT_REPOS to maintain consistency with the change made in cli.py
+refactor(utils.py): rename GIT_MODULE to GIT_REPOS to maintain consistency with the changes made in cli.py and const.py ([`856e701`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/856e70183de985a764e099d346c8255430ef58f3))
+
+* refactor(cli.py): rename _addons_path_docker variable to _mount_path_docker for better clarity
+refactor(cli.py): update target path in Mount configuration to use _mount_path_docker variable for consistency ([`215756a`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/215756a1f2abf7dc2dcc04f89f0fb70d7ab9799c))
+
+* refactor(base.py): improve type annotations and variable names for better readability and maintainability
+feat(base.py): add type annotations for recordset variables to improve code clarity and avoid potential errors ([`07c881b`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/07c881ba2452d6d0094f5d57e5f9e42d7bbe05b1))
+
+
 ## v0.1.0 (2023-10-19)
 
 ### Build
@@ -241,6 +303,10 @@ refactor(importer/base.py): refactor export_data to use const.settings.PATH inst
 This commit only fixes formatting issues in the mentioned files. No functional changes were made. ([`8c16359`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/8c163591435f1a9fca19979eaf99f5ec09ad915a))
 
 ### Unknown
+
+* 0.1.0 [skip ci]
+
+Automatically generated by python-semantic-release ([`5458932`](https://github.com/MyCityCO2/mycityco2-data-processing/commit/54589327489183837688e8795cd3fdc1ae5c11ab))
 
 * Merge pull request #14 from MyCityCO2/main+docker
 
