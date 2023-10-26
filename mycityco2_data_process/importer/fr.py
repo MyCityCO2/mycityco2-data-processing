@@ -155,7 +155,7 @@ class FrImporter(AbstractImporter):
         self._city_amount += len(final_data)
 
         if not self._city_amount:
-            logger.error("No city find with this scope")
+            logger.error("No city found with this scope")
             raise Abort()
 
         return final_data
