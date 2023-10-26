@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
     # 2022 Only available in certain dataset for France
-    YEAR: list = list(range(2010, 2023))
+    YEARS_TO_COMPUTE: list = list(range(2010, 2023))
     # YEAR: list = [2010]
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
 

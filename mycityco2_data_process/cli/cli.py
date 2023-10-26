@@ -418,7 +418,7 @@ def cleaner(
 
     ERROR_FILE = []
 
-    WARNING_YEAR = list(range(2016, 2022))  # const.settings.YEAR
+    WARNING_YEAR = list(range(2016, 2022))  # const.settings.YEARS_TO_COMPUTE
 
     sorted_file = sorted([f.name for f in os.scandir(const.settings.DATA_PATH)])
 

@@ -129,9 +129,9 @@ class FrImporter(AbstractImporter):
             if M57_LAST_YEAR_CHECK:
                 to_continue = True
                 for data in cities_data:
-                    if data.get("exer") == str(const.settings.YEAR[-1]) and data.get(
-                        "nomen"
-                    ) not in [
+                    if data.get("exer") == str(
+                        const.settings.YEARS_TO_COMPUTE[-1]
+                    ) and data.get("nomen") not in [
                         "M14",
                         "M14A",
                     ]:
@@ -334,7 +334,7 @@ class FrImporter(AbstractImporter):
         match (source.lower()):
             case "api":
                 if not year:
-                    for current_year in const.settings.YEAR:
+                    for current_year in const.settings.YEARS_TO_COMPUTE:
                         data = self.get_account_move_data_from(
                             source=source,
                             year=current_year,
@@ -454,7 +454,7 @@ class FrImporter(AbstractImporter):
 
             default_plan_identifier = account_dict["000"]
 
-            for year in const.settings.YEAR:
+            for year in const.settings.YEARS_TO_COMPUTE:
                 city_account_move_line_ids = []
                 date = f"{year}-12-31"  # YEAR / MONTH / DAY
 
