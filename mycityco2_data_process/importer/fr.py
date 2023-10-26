@@ -139,7 +139,7 @@ class FrImporter(AbstractImporter):
             # if to_continue:
             #     continue
 
-            nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
+            nomens = set(map(lambda x: x.get("nomen"), cities_data))
 
             for nomen in nomens:
                 if nomen in NOMENCLATURE:
