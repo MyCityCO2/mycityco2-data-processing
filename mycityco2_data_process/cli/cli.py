@@ -204,7 +204,7 @@ def start(
     def _create_docker_container(
         image, container, port, env=False, mounts=False, command=False
     ):
-        container_name = container.split(const.settings.DOCKER_CONTAINER_START_NAME)[-1]
+        container_name = container.split(const.settings.DOCKER_CONTAINER_PREFIX)[-1]
         con = client.containers.create(
             image,
             name=container,
@@ -221,7 +221,7 @@ def start(
 
     for container in CONTAINERS:
         container_name = container.rsplit(
-            const.settings.DOCKER_CONTAINER_START_NAME, maxsplit=1
+            const.settings.DOCKER_CONTAINER_PREFIX, maxsplit=1
         )[-1]
         if not containers_name_mapping.get(container):
             logger.debug(f"[DOCKER] Creating {container_name} docker")

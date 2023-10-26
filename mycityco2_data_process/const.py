@@ -83,9 +83,9 @@ class Settings(BaseSettings):
     GIT_PATH = _path / "data" / "common" / "modules"
 
     # Docker parameters
-    DOCKER_CONTAINER_START_NAME: str = "mycityco2_container_"
-    DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "odoo"
-    DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "db"
+    DOCKER_CONTAINER_PREFIX: str = "mycityco2_container_"
+    DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_PREFIX + "odoo"
+    DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_PREFIX + "db"
 
     DOCKER_NETWORK_NAME: str = "mycityco2_network"
 
