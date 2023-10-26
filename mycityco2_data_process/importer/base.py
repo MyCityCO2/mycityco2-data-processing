@@ -279,9 +279,6 @@ class AbstractImporter(ABC):
 
         journals = self.env["account.journal"].create(journals_ids)
 
-        if len(journals_ids):
-            journals.read(fields=[k for k, v in journals_ids[0].items()])
-
         self.journals_ids = journals
 
         return journals_ids
