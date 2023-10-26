@@ -119,15 +119,13 @@ class AbstractImporter(ABC):
 
     def check_env(self):
         # Checking required module
-        for module_name in const.settings.REQUIRED_ODOO_MODULE:
-            module = self.env["ir.module.module"].search_read(
-                [("name", "=", module_name)]
-            )
-
-            if not module or module.state != "installed":
+        for module in self.env["ir.module.module"].search(
+            [("name", "in", const.settings.REQUIRED_ODOO_MODULE)]
+        ):
+            if module.state != "installed":
                 logger.error(
                     "Please install the module '{0}' on the db '{1}' since it's required. Accessible at {2}/web?db={1}".format(
-                        module_name, const.settings.TEMPLATE_DB, const.settings.URL
+                        module.name, const.settings.TEMPLATE_DB, const.settings.URL
                     )
                 )
                 return False
