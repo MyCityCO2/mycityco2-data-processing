@@ -65,11 +65,6 @@ class AbstractImporter(ABC):
             vals = vals_list[chunk * i : chunk * (i + 1)]
             vals_list_id |= self.env[model].create(vals)
 
-            # if vals:
-            #     created_record.read(fields=[k for k, _ in vals[0].items()])
-
-            # vals_list_id |= created_record
-
         logger.debug(f"{self._db} - All '{model}' chunk has been created")
         return vals_list_id
 
@@ -149,8 +144,6 @@ class AbstractImporter(ABC):
 
         # Carbon Factor
         carbon_factor = self.env["carbon.factor"].search_read([])
-        # logger.error(carbon_factor)
-        # raise typer.Abort()
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -200,14 +193,6 @@ class AbstractImporter(ABC):
                 xml_id_vals["res_id"] = factor_id.id
 
             self.env["ir.model.data"].create(xml_id_vals_list)
-
-        # logger.error("here")
-        # logger.error(
-        #     self.env["res.users"]
-        #     .search([("login", "=", "__system__")])
-        #     .write({"password": "abo"})
-        # )
-        # logger.error("here")
         return True
 
     @abstractmethod
