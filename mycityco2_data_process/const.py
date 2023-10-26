@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
     # 2022 Only available in certain dataset for France
-    YEAR: list = list(range(2010, 2023))
+    YEARS_TO_COMPUTE: list = list(range(2010, 2023))
     # YEAR: list = [2010]
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
 
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     ]
 
     # module_name, git link (with .git at the end), branch
-    GIT_MODULE: list[tuple] = [
+    GIT_REPOS: list[tuple] = [
         (
             "onsp_co2_bundle",
             "git@github.com:MyCityCO2/mycityco2-engine.git",
@@ -83,14 +83,14 @@ class Settings(BaseSettings):
     GIT_PATH = _path / "data" / "common" / "modules"
 
     # Docker parameters
-    DOCKER_CONTAINER_START_NAME: str = "mycityco2_container_"
-    DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "odoo"
-    DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "db"
+    DOCKER_CONTAINER_PREFIX: str = "mycityco2_container_"
+    DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_PREFIX + "odoo"
+    DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_PREFIX + "db"
 
     DOCKER_NETWORK_NAME: str = "mycityco2_network"
 
-    DOCKER_ODOO_IMAGES: str = "odoo:16.0"
-    DOCKER_POSTGRES_IMAGES: str = "postgres:13"
+    DOCKER_ODOO_IMAGE: str = "odoo:16.0"
+    DOCKER_POSTGRES_IMAGE: str = "postgres:13"
 
     ODOO_CONF_PATH: Path = PATH / "data" / "common" / "odoo.conf"
 
