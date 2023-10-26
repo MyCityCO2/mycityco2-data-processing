@@ -37,8 +37,6 @@ ACCOUNT_ASSET_FILE: Path = FR_PATH_FILE / "fr_mapping_immo_exiobase.csv"
 
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
 
-M57_LAST_YEAR_CHECK: bool = False
-
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
     value_list = dictionnary.get("Compte")
@@ -125,22 +123,21 @@ class FrImporter(AbstractImporter):
                 siren=city.get("com_siren_code"), source=self.source_name
             )
 
-            # TODO: remove because its for dev only
-            if M57_LAST_YEAR_CHECK:
-                to_continue = True
-                for data in cities_data:
-                    if data.get("exer") == str(
-                        const.settings.YEARS_TO_COMPUTE[-1]
-                    ) and data.get("nomen") not in [
-                        "M14",
-                        "M14A",
-                    ]:
-                        to_continue = False
-                        break
+            ### DocString ###
+            ### This function has been used in the past in order to filter only to city that change nomenclature during ou YEARS_TO_COMPUTE maybe useful in the future so we keep trace of it ###
+            #  to_continue = True
+            # for data in cities_data:
+            #     if data.get("exer") == str(
+            #         const.settings.YEARS_TO_COMPUTE[-1]
+            #     ) and data.get("nomen") not in [
+            #         "M14",
+            #         "M14A",
+            #     ]:
+            #         to_continue = False
+            #         break
 
-                if to_continue:
-                    continue
-            # TODO: remove because its for dev only
+            # if to_continue:
+            #     continue
 
             nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
 
