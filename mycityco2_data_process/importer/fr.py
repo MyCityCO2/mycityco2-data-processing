@@ -324,13 +324,26 @@ class FrImporter(AbstractImporter):
     def get_account_move_data_from(
         self, source: str, year: str = None, siren: str = None, only_nomen: bool = False
     ):
+        """
+        Get account move data from Economie. Depending on the source it will return a dict with the following keys : account_name : Name of the account to get move data from.
+
+        @param source - Source of the account. Can be api or csv.
+        @param year - Year in which to search. If None search all years.
+        @param siren - Siren of the account to get move data from.
+        @param only_nomen - If True only return data that is nomen. [DEPRECATED] This argument will be remove in future developement
+
+        @return dict or None if source is not api or no
+        """
+        # Set the source name of the source file.
         if not source:
             source = self.source_name
         step3_1_start_timer = time.perf_counter()
         data = None
         match (source.lower()):
             case "api":
+                # Get account move data from the GOUV API.
                 if not year:
+                    # Get the move data for the current year.
                     for current_year in const.settings.YEARS_TO_COMPUTE:
                         data = self.get_account_move_data_from(
                             source=source,
@@ -338,8 +351,6 @@ class FrImporter(AbstractImporter):
                             siren=siren,
                             only_nomen=only_nomen,
                         )
-
-                        # return data
                 else:
                     url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&timezone=UTC"
 
@@ -358,6 +369,7 @@ class FrImporter(AbstractImporter):
                         + refine_parameter
                     )
 
+                    # Get nomen from the new url
                     if only_nomen:
                         data = (
                             requests.get(
@@ -374,6 +386,7 @@ class FrImporter(AbstractImporter):
                             allow_redirects=False,
                         ).json()
             case "csv":
+                # This method will read the account move dataframe and store it in account_move_dataframe
                 if not len(self.account_move_dataframe.index):
                     account_move_dataframe = pandas.read_csv(
                         FR_PATH_FILE / "departement" / f"{self._departement}.csv",
@@ -397,11 +410,13 @@ class FrImporter(AbstractImporter):
 
                 account_move_dataframe = self.account_move_dataframe
 
+                # Return the dataframe of account move dataframe for year
                 if year:
                     account_move_dataframe = account_move_dataframe[
                         account_move_dataframe["exer"] == str(year)
                     ]
 
+                # Check if account move dataframe contains siren
                 if siren:
                     account_move_dataframe = account_move_dataframe[
                         account_move_dataframe["siren"] == siren
@@ -409,6 +424,7 @@ class FrImporter(AbstractImporter):
 
                 account_move = account_move_dataframe.to_dict("records")
 
+                # Get the nomen from the account move
                 if only_nomen:
                     data = account_move[0].get("nomen")
                 else:
