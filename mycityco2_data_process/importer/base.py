@@ -1,12 +1,11 @@
 import time
 from abc import ABC, abstractmethod
-from typing import Any
 
 import pandas
 import typer
 from loguru import logger
 from otools_rpc.db_manager import DBManager
-from otools_rpc.external_api import Environment
+from otools_rpc.external_api import Environment, RecordSet
 
 from mycityco2_data_process import const
 
@@ -84,23 +83,23 @@ class AbstractImporter(ABC):
         if not self.check_env():
             raise typer.Abort()
 
-        self.user_ids: Any = self.env["res.users"].search_read([])
-        self.currency_id: Any = self.env["res.currency"].search_read(
+        self.user_ids: RecordSet = self.env["res.users"].search_read([])
+        self.currency_id: RecordSet = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
         )
-        self.external_layout_id: Any = self.env.ref("web.external_layout_standard")
+        self.external_layout_id: RecordSet = self.env.ref(
+            "web.external_layout_standard"
+        )
 
-        # TODO: replace Any by recordset type
-
-        self.city_ids: Any = self.env["res.company"]
-        self.city_account_account_ids: Any = self.env["account.account"]
-        self.account_account_ids: Any = self.env["account.account"]
-        self.account_move_ids: Any = self.env["account.move"]
-        self.account_move_line_ids: Any = self.env["account.move.line"]
+        self.city_ids: RecordSet = self.env["res.company"]
+        self.city_account_account_ids: RecordSet = self.env["account.account"]
+        self.account_account_ids: RecordSet = self.env["account.account"]
+        self.account_move_ids: RecordSet = self.env["account.move"]
+        self.account_move_line_ids: RecordSet = self.env["account.move.line"]
         self.carbon_factor: list[dict[str, str, str]] = None
-        self.carbon_factor_id: list[dict[str, Any]] = {}
+        self.carbon_factor_id: list[dict[str, RecordSet]] = {}
         self.account_asset_categories: dict = {}
-        self.account_asset: Any = self.env["account.asset"]
+        self.account_asset: RecordSet = self.env["account.asset"]
 
         self.init_step()
 
