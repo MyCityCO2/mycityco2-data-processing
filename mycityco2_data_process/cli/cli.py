@@ -240,9 +240,9 @@ def start(
                     )
 
                 case const.settings.DOCKER_ODOO_CONTAINER_NAME:
-                    _addons_path_docker = "/mnt/extra-addons/"
+                    _mount_path_docker = "/mnt/extra-addons/"
                     addons = [
-                        _addons_path_docker + addon
+                        _mount_path_docker + addon
                         for addon, _, _ in const.settings.GIT_MODULE
                     ]
                     _create_docker_container(
@@ -258,7 +258,7 @@ def start(
                             ),
                             Mount(
                                 source=const.settings.GIT_PATH.as_posix(),
-                                target="/mnt/extra-addons",
+                                target=_mount_path_docker,
                                 type="bind",
                             ),
                         ],
