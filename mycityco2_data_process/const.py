@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     ACCOUNT_CHUNK_SIZE: int = 4000
     ACCOUNT_ASSET_CHUNK_SIZE: int = 2000
 
-    # 2022 Only available in certain dataset for France
+    # TODO: Rename YEAR to YEARS_TO_COMPUTE (if better name is comming do change it)
     YEAR: list = list(range(2010, 2023))
     # YEAR: list = [2010]
     DEFAULT_ACCOUNT_TYPE: str = "off_balance"
@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     ]
 
     # module_name, git link (with .git at the end), branch
+    # TODO: rename GIT_REPOS
     GIT_MODULE: list[tuple] = [
         (
             "onsp_co2_bundle",
@@ -83,17 +84,20 @@ class Settings(BaseSettings):
     GIT_PATH = _path / "data" / "common" / "modules"
 
     # Docker parameters
+    # TODO: rename DOCKER_CONTAINER_PREFIX
     DOCKER_CONTAINER_START_NAME: str = "mycityco2_container_"
     DOCKER_ODOO_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "odoo"
     DOCKER_POSTGRES_CONTAINER_NAME: str = DOCKER_CONTAINER_START_NAME + "db"
 
     DOCKER_NETWORK_NAME: str = "mycityco2_network"
 
+    # TODO: rename images -> image
     DOCKER_ODOO_IMAGES: str = "odoo:16.0"
     DOCKER_POSTGRES_IMAGES: str = "postgres:13"
 
     ODOO_CONF_PATH: Path = PATH / "data" / "common" / "odoo.conf"
 
+    # IMP: Add remote
     OPERATION_MODE: str = "docker"
 
     # Method

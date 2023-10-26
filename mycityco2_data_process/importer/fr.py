@@ -14,6 +14,7 @@ from mycityco2_data_process import const
 from mycityco2_data_process import logger as log_conf
 from mycityco2_data_process.importer.base import AbstractImporter
 
+# IMP: Rename nomenclature to asset code
 NOMENCLATURE_PARAMS: dict = {
     "M14": ["M14-M14_COM_SUP3500", "M14-M14_COM_INF500", "M14-M14_COM_500_3500"],
     "M14A": ["M14-M14_COM_SUP3500", "M14-M14_COM_INF500", "M14-M14_COM_500_3500"],
@@ -40,6 +41,7 @@ CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?datas
 M57_LAST_YEAR_CHECK: bool = False
 
 
+# IMP: docstring this shit
 def _get_chart_account(dictionnary: dict, result_list: list = []):
     value_list = dictionnary.get("Compte")
 
@@ -125,7 +127,7 @@ class FrImporter(AbstractImporter):
                 siren=city.get("com_siren_code"), source=self.source_name
             )
 
-            # TODO: remove because its for dev only
+            # TODO: Comment and remove option and docstring
             if M57_LAST_YEAR_CHECK:
                 to_continue = True
                 for data in cities_data:
@@ -140,8 +142,9 @@ class FrImporter(AbstractImporter):
 
                 if to_continue:
                     continue
-            # TODO: remove because its for dev only
+            # END TODO #
 
+            # TODO: Try removing the list function
             nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
 
             for nomen in nomens:
@@ -157,6 +160,7 @@ class FrImporter(AbstractImporter):
 
         self._city_amount += len(final_data)
 
+        # TODO: Change find to found
         if not self._city_amount:
             logger.error("No city find with this scope")
             raise Abort()
@@ -193,6 +197,7 @@ class FrImporter(AbstractImporter):
 
         existing_account = []
 
+        # IMP: Use NOMENCLATURE_PARAMS.items()
         for nomen in NOMENCLATURE:
             final_accounts[nomen] = []
             for parameter in NOMENCLATURE_PARAMS[nomen]:
@@ -265,6 +270,7 @@ class FrImporter(AbstractImporter):
             if not len(data):
                 continue
 
+            # IMP: do one liner
             nomen = data[-1].get("nomen")
             if "|" in city.name:
                 nomen = city.name.split("|")[-1]
@@ -324,6 +330,8 @@ class FrImporter(AbstractImporter):
 
         return account_account_ids
 
+    # TODO: Docstring this blackbox
+    # IMP: Remove option only_nomen and return type should be everytime the same
     def get_account_move_data_from(
         self, source: str, year: str = None, siren: str = None, only_nomen: bool = False
     ):
@@ -341,11 +349,10 @@ class FrImporter(AbstractImporter):
                             siren=siren,
                             only_nomen=only_nomen,
                         )
-
-                        # return data
                 else:
                     url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&timezone=UTC"
 
+                    # IMP: Do list with join for parameter
                     # Hardcoded year because the API change filter type on 2015
                     refine_parameter = (
                         "&refine=budget:BP" if year <= 2015 else "&refine=cbudg:1"
@@ -361,6 +368,7 @@ class FrImporter(AbstractImporter):
                         + refine_parameter
                     )
 
+                    # IMP: find other way to do request. Do a .mapped for nomen
                     if only_nomen:
                         data = (
                             requests.get(
@@ -410,6 +418,7 @@ class FrImporter(AbstractImporter):
                         account_move_dataframe["siren"] == siren
                     ]
 
+                # IMP: do "records" is useful ?
                 account_move = account_move_dataframe.to_dict("records")
 
                 if only_nomen:
@@ -424,6 +433,7 @@ class FrImporter(AbstractImporter):
 
     # @depends("city_ids", "journals_ids", "city_account_account_ids", "currency_id")
     def get_account_move_data(self):
+        # IMP: rename 'account_journal_dict' to 'city_id_to_journal_mapping'
         account_journal_dict = {
             record.company_id.id: record
             for record in self.journals_ids.filtered(
@@ -527,6 +537,7 @@ class FrImporter(AbstractImporter):
 
                 difference = credit - debit
 
+                # IMP: comptable -> accounting
                 if round(difference, 2) != 0:
                     log_conf.send_discord(
                         msg=f"The city '**{city.name}**' from '**{self._departement}**' for '**{year}**' has an comptable problem : credit='{round(credit, 2)}', debit='{round(debit, 2)}', **diff='{round(difference, 2)}'**",

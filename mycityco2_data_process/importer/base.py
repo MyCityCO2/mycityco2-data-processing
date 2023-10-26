@@ -125,6 +125,7 @@ class AbstractImporter(ABC):
 
     def check_env(self):
         # Checking required module
+        # TODO: Do no search in for loop
         for module_name in const.settings.REQUIRED_ODOO_MODULE:
             module = self.env["ir.module.module"].search_read(
                 [("name", "=", module_name)]
@@ -139,6 +140,7 @@ class AbstractImporter(ABC):
                 return False
 
         # Checking and activating currency
+        # IMP: Use active_test=False with context
         currency = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name), ("active", "in", [True, False])]
         )
@@ -149,9 +151,8 @@ class AbstractImporter(ABC):
             currency.write({"active": True})
 
         # Carbon Factor
+        # IMP: Do this in the cli.start with argument -i and add argument --no-carbon-factor
         carbon_factor = self.env["carbon.factor"].search_read([])
-        # logger.error(carbon_factor)
-        # raise typer.Abort()
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -202,13 +203,6 @@ class AbstractImporter(ABC):
 
             self.env["ir.model.data"].create(xml_id_vals_list)
 
-        # logger.error("here")
-        # logger.error(
-        #     self.env["res.users"]
-        #     .search([("login", "=", "__system__")])
-        #     .write({"password": "abo"})
-        # )
-        # logger.error("here")
         return True
 
     @abstractmethod
@@ -235,6 +229,7 @@ class AbstractImporter(ABC):
         """
         raise NotImplementedError()
 
+    # TODO: Add return format, and example
     @abstractmethod
     def get_journal_data(self):
         """This function will generate an pattern for the account.journal. In this function you'll need to iterate on all city and generate journal according and return them without any creation."""
@@ -280,6 +275,7 @@ class AbstractImporter(ABC):
 
         journals = self.env["account.journal"].create(journals_ids)
 
+        # TODO: Remove read due to otools-rpc mig
         if len(journals_ids):
             journals.read(fields=[k for k, v in journals_ids[0].items()])
 
@@ -335,4 +331,6 @@ class AbstractImporter(ABC):
     @depends("account_account_ids")
     def populate_account_move(self):
         """This function is only there to iterate on the create of account.move data."""
+
+        # IMP: Create data here not in fr importer
         self.get_account_move_data()

@@ -165,6 +165,7 @@ def csv(
         logger.info(f"All files moved to '{dst_path}'")
 
 
+# IMP: Add arguments workers
 @cli.command()
 def start(
     install_module: bool = typer.Option(
@@ -226,6 +227,7 @@ def start(
         if not containers_name_mapping.get(container):
             logger.debug(f"[DOCKER] Creating {container_name} docker")
 
+            # TODO: Find solution to "db" in and "odoo" in. With the var container
             if "db" in container_name:
                 _create_docker_container(
                     container=container,
@@ -249,6 +251,7 @@ def start(
                     command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
                     image=const.settings.DOCKER_ODOO_IMAGES,
                     port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
+                    # IMP: Try mount everything same place
                     mounts=[
                         Mount(
                             source=const.settings.ODOO_CONF_PATH.as_posix(),
@@ -257,6 +260,7 @@ def start(
                         ),
                         Mount(
                             source=const.settings.GIT_PATH.as_posix(),
+                            # TODO: use var '_addons_path_docker'
                             target="/mnt/extra-addons",
                             type="bind",
                         ),
