@@ -226,42 +226,43 @@ def start(
         if not containers_name_mapping.get(container):
             logger.debug(f"[DOCKER] Creating {container_name} docker")
 
-            if "db" in container_name:
-                _create_docker_container(
-                    container=container,
-                    image=const.settings.DOCKER_POSTGRES_IMAGES,
-                    port={"5432/tcp": [{"HostIp": "0.0.0.0", "HostPort": "5432"}]},
-                    env={
-                        "POSTGRES_DB": "postgres",
-                        "POSTGRES_PASSWORD": "odoo",
-                        "POSTGRES_USER": "odoo",
-                    },
-                )
+            match (container):
+                case const.settings.DOCKER_POSTGRES_CONTAINER_NAME:
+                    _create_docker_container(
+                        container=container,
+                        image=const.settings.DOCKER_POSTGRES_IMAGES,
+                        port={"5432/tcp": [{"HostIp": "0.0.0.0", "HostPort": "5432"}]},
+                        env={
+                            "POSTGRES_DB": "postgres",
+                            "POSTGRES_PASSWORD": "odoo",
+                            "POSTGRES_USER": "odoo",
+                        },
+                    )
 
-            elif "odoo" in container_name:
-                _addons_path_docker = "/mnt/extra-addons/"
-                addons = [
-                    _addons_path_docker + addon
-                    for addon, _, _ in const.settings.GIT_MODULE
-                ]
-                _create_docker_container(
-                    container=container,
-                    command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
-                    image=const.settings.DOCKER_ODOO_IMAGES,
-                    port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
-                    mounts=[
-                        Mount(
-                            source=const.settings.ODOO_CONF_PATH.as_posix(),
-                            target="/var/lib/odoo/odoo.conf",
-                            type="bind",
-                        ),
-                        Mount(
-                            source=const.settings.GIT_PATH.as_posix(),
-                            target="/mnt/extra-addons",
-                            type="bind",
-                        ),
-                    ],
-                )
+                case const.settings.DOCKER_ODOO_CONTAINER_NAME:
+                    _addons_path_docker = "/mnt/extra-addons/"
+                    addons = [
+                        _addons_path_docker + addon
+                        for addon, _, _ in const.settings.GIT_MODULE
+                    ]
+                    _create_docker_container(
+                        container=container,
+                        command=f"-c /var/lib/odoo/odoo.conf --addons-path {','.join(addons)} --workers 8",
+                        image=const.settings.DOCKER_ODOO_IMAGES,
+                        port={"8069/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8069"}]},
+                        mounts=[
+                            Mount(
+                                source=const.settings.ODOO_CONF_PATH.as_posix(),
+                                target="/var/lib/odoo/odoo.conf",
+                                type="bind",
+                            ),
+                            Mount(
+                                source=const.settings.GIT_PATH.as_posix(),
+                                target="/mnt/extra-addons",
+                                type="bind",
+                            ),
+                        ],
+                    )
 
         if containers_name_mapping.get(container):
             container_docker = containers_name_mapping.get(container)
