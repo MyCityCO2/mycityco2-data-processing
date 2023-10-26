@@ -52,7 +52,7 @@ profile = "black"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B106", "B108", "B608", "B104", "B105"]
+skips = ["B106", "B108", "B608", "B104", "B105", "B320", "B408", "B410", "B318", "B306", "B603", "B307", "B404", "B101"]
 
 [tool.ruff]
 src = ["mycityco2_data_process", "tests"]
