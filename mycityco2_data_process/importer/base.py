@@ -1,12 +1,11 @@
 import time
 from abc import ABC, abstractmethod
-from typing import Any
 
 import pandas
 import typer
 from loguru import logger
 from otools_rpc.db_manager import DBManager
-from otools_rpc.external_api import Environment
+from otools_rpc.external_api import Environment, RecordSet
 
 from mycityco2_data_process import const
 
@@ -66,11 +65,6 @@ class AbstractImporter(ABC):
             vals = vals_list[chunk * i : chunk * (i + 1)]
             vals_list_id |= self.env[model].create(vals)
 
-            # if vals:
-            #     created_record.read(fields=[k for k, _ in vals[0].items()])
-
-            # vals_list_id |= created_record
-
         logger.debug(f"{self._db} - All '{model}' chunk has been created")
         return vals_list_id
 
@@ -84,23 +78,23 @@ class AbstractImporter(ABC):
         if not self.check_env():
             raise typer.Abort()
 
-        self.user_ids: Any = self.env["res.users"].search_read([])
-        self.currency_id: Any = self.env["res.currency"].search_read(
+        self.user_ids: RecordSet = self.env["res.users"].search_read([])
+        self.currency_id: RecordSet = self.env["res.currency"].search_read(
             [("name", "=", self.currency_name)]
         )
-        self.external_layout_id: Any = self.env.ref("web.external_layout_standard")
+        self.external_layout_id: RecordSet = self.env.ref(
+            "web.external_layout_standard"
+        )
 
-        # TODO: replace Any by recordset type
-
-        self.city_ids: Any = self.env["res.company"]
-        self.city_account_account_ids: Any = self.env["account.account"]
-        self.account_account_ids: Any = self.env["account.account"]
-        self.account_move_ids: Any = self.env["account.move"]
-        self.account_move_line_ids: Any = self.env["account.move.line"]
+        self.city_ids: RecordSet = self.env["res.company"]
+        self.city_account_account_ids: RecordSet = self.env["account.account"]
+        self.account_account_ids: RecordSet = self.env["account.account"]
+        self.account_move_ids: RecordSet = self.env["account.move"]
+        self.account_move_line_ids: RecordSet = self.env["account.move.line"]
         self.carbon_factor: list[dict[str, str, str]] = None
-        self.carbon_factor_id: list[dict[str, Any]] = {}
+        self.carbon_factor_id: list[dict[str, RecordSet]] = {}
         self.account_asset_categories: dict = {}
-        self.account_asset: Any = self.env["account.asset"]
+        self.account_asset: RecordSet = self.env["account.asset"]
 
         self.init_step()
 
@@ -125,15 +119,13 @@ class AbstractImporter(ABC):
 
     def check_env(self):
         # Checking required module
-        for module_name in const.settings.REQUIRED_ODOO_MODULE:
-            module = self.env["ir.module.module"].search_read(
-                [("name", "=", module_name)]
-            )
-
-            if not module or module.state != "installed":
+        for module in self.env["ir.module.module"].search(
+            [("name", "in", const.settings.REQUIRED_ODOO_MODULE)]
+        ):
+            if module.state != "installed":
                 logger.error(
                     "Please install the module '{0}' on the db '{1}' since it's required. Accessible at {2}/web?db={1}".format(
-                        module_name, const.settings.TEMPLATE_DB, const.settings.URL
+                        module.name, const.settings.TEMPLATE_DB, const.settings.URL
                     )
                 )
                 return False
@@ -150,8 +142,6 @@ class AbstractImporter(ABC):
 
         # Carbon Factor
         carbon_factor = self.env["carbon.factor"].search_read([])
-        # logger.error(carbon_factor)
-        # raise typer.Abort()
         if not len(carbon_factor):
             logger.info("Creating Carbon Factor Records")
             factor_carbon_mapping_df = pandas.DataFrame(
@@ -201,14 +191,6 @@ class AbstractImporter(ABC):
                 xml_id_vals["res_id"] = factor_id.id
 
             self.env["ir.model.data"].create(xml_id_vals_list)
-
-        # logger.error("here")
-        # logger.error(
-        #     self.env["res.users"]
-        #     .search([("login", "=", "__system__")])
-        #     .write({"password": "abo"})
-        # )
-        # logger.error("here")
         return True
 
     @abstractmethod
@@ -279,9 +261,6 @@ class AbstractImporter(ABC):
         journals_ids = self.get_journal_data()
 
         journals = self.env["account.journal"].create(journals_ids)
-
-        if len(journals_ids):
-            journals.read(fields=[k for k, v in journals_ids[0].items()])
 
         self.journals_ids = journals
 

@@ -1,0 +1,23 @@
+site_name: MyCityCo2 importer
+
+theme:
+  name: "material"
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.instant
+
+plugins:
+  - mkdocstrings
+  - search
+
+nav:
+  - Index Page: index.md
+  - Tutorials: tutorials.md
+  - How-To-Guides: how-to-guides.md
+  - Reference: reference.md
+  - Explanation: explanation.md
+
+repo_url: https://github.com/MyCityCO2/mycityco2-data-processing
+# to navigate with `/site` content correctly
+use_directory_urls: false

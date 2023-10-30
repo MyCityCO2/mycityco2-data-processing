@@ -37,8 +37,6 @@ ACCOUNT_ASSET_FILE: Path = FR_PATH_FILE / "fr_mapping_immo_exiobase.csv"
 
 CITIES_URL: str = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=georef-france-commune&q=&sort=com_name&rows={}&start={}&refine.dep_code={}"
 
-M57_LAST_YEAR_CHECK: bool = False
-
 
 def _get_chart_account(dictionnary: dict, result_list: list = []):
     value_list = dictionnary.get("Compte")
@@ -125,24 +123,23 @@ class FrImporter(AbstractImporter):
                 siren=city.get("com_siren_code"), source=self.source_name
             )
 
-            # TODO: remove because its for dev only
-            if M57_LAST_YEAR_CHECK:
-                to_continue = True
-                for data in cities_data:
-                    if data.get("exer") == str(const.settings.YEAR[-1]) and data.get(
-                        "nomen"
-                    ) not in [
-                        "M14",
-                        "M14A",
-                    ]:
-                        to_continue = False
-                        break
+            ### DocString ###
+            ### This function has been used in the past in order to filter only to city that change nomenclature during ou YEARS_TO_COMPUTE maybe useful in the future so we keep trace of it ###
+            #  to_continue = True
+            # for data in cities_data:
+            #     if data.get("exer") == str(
+            #         const.settings.YEARS_TO_COMPUTE[-1]
+            #     ) and data.get("nomen") not in [
+            #         "M14",
+            #         "M14A",
+            #     ]:
+            #         to_continue = False
+            #         break
 
-                if to_continue:
-                    continue
-            # TODO: remove because its for dev only
+            # if to_continue:
+            #     continue
 
-            nomens = set(list(map(lambda x: x.get("nomen"), cities_data)))
+            nomens = set(map(lambda x: x.get("nomen"), cities_data))
 
             for nomen in nomens:
                 if nomen in NOMENCLATURE:
@@ -158,7 +155,7 @@ class FrImporter(AbstractImporter):
         self._city_amount += len(final_data)
 
         if not self._city_amount:
-            logger.error("No city find with this scope")
+            logger.error("No city found with this scope")
             raise Abort()
 
         return final_data
@@ -327,22 +324,33 @@ class FrImporter(AbstractImporter):
     def get_account_move_data_from(
         self, source: str, year: str = None, siren: str = None, only_nomen: bool = False
     ):
+        """
+        Get account move data from Economie. Depending on the source it will return a dict with the following keys : account_name : Name of the account to get move data from.
+
+        @param source - Source of the account. Can be api or csv.
+        @param year - Year in which to search. If None search all years.
+        @param siren - Siren of the account to get move data from.
+        @param only_nomen - If True only return data that is nomen. [DEPRECATED] This argument will be remove in future developement
+
+        @return dict or None if source is not api or no
+        """
+        # Set the source name of the source file.
         if not source:
             source = self.source_name
         step3_1_start_timer = time.perf_counter()
         data = None
         match (source.lower()):
             case "api":
+                # Get account move data from the GOUV API.
                 if not year:
-                    for current_year in const.settings.YEAR:
+                    # Get the move data for the current year.
+                    for current_year in const.settings.YEARS_TO_COMPUTE:
                         data = self.get_account_move_data_from(
                             source=source,
                             year=current_year,
                             siren=siren,
                             only_nomen=only_nomen,
                         )
-
-                        # return data
                 else:
                     url = "https://data.economie.gouv.fr/api/v2/catalog/datasets/balances-comptables-des-communes-en-{}/exports/json?offset=0&timezone=UTC"
 
@@ -361,6 +369,7 @@ class FrImporter(AbstractImporter):
                         + refine_parameter
                     )
 
+                    # Get nomen from the new url
                     if only_nomen:
                         data = (
                             requests.get(
@@ -377,6 +386,7 @@ class FrImporter(AbstractImporter):
                             allow_redirects=False,
                         ).json()
             case "csv":
+                # This method will read the account move dataframe and store it in account_move_dataframe
                 if not len(self.account_move_dataframe.index):
                     account_move_dataframe = pandas.read_csv(
                         FR_PATH_FILE / "departement" / f"{self._departement}.csv",
@@ -400,11 +410,13 @@ class FrImporter(AbstractImporter):
 
                 account_move_dataframe = self.account_move_dataframe
 
+                # Return the dataframe of account move dataframe for year
                 if year:
                     account_move_dataframe = account_move_dataframe[
                         account_move_dataframe["exer"] == str(year)
                     ]
 
+                # Check if account move dataframe contains siren
                 if siren:
                     account_move_dataframe = account_move_dataframe[
                         account_move_dataframe["siren"] == siren
@@ -412,6 +424,7 @@ class FrImporter(AbstractImporter):
 
                 account_move = account_move_dataframe.to_dict("records")
 
+                # Get the nomen from the account move
                 if only_nomen:
                     data = account_move[0].get("nomen")
                 else:
@@ -454,7 +467,7 @@ class FrImporter(AbstractImporter):
 
             default_plan_identifier = account_dict["000"]
 
-            for year in const.settings.YEAR:
+            for year in const.settings.YEARS_TO_COMPUTE:
                 city_account_move_line_ids = []
                 date = f"{year}-12-31"  # YEAR / MONTH / DAY
 
@@ -878,7 +891,7 @@ class FrImporter(AbstractImporter):
             #     dataframe["entry_carbon_kgco2e"] / dataframe["habitant"]
             # )
 
-            dataframe = dataframe[dataframe["category_name"] != False]
+            dataframe = dataframe[dataframe["category_name"] is not False]
             # Category
 
             logger.debug(f"{self._db} - Sorting dataframe")
