@@ -206,6 +206,13 @@ def start(
         image, container, port, env=False, mounts=False, command=False
     ):
         container_name = container.split(const.settings.DOCKER_CONTAINER_PREFIX)[-1]
+        try:
+            client.images.get(image)
+        except docker_errors.ImageNotFound:
+            client.images.pull(image)
+        except Exception as e:
+            raise e
+        # raise typer.Abort()
         con = client.containers.create(
             image,
             name=container,
