@@ -97,7 +97,7 @@ class FrImporter(AbstractImporter):
     def source_name(self):
         """API or CSV"""
         # return "API"  # May reach rate limit
-        return "CSV"
+        return "API"
 
     @property
     def importer(self):
