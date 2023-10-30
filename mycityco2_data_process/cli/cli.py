@@ -47,6 +47,7 @@ def run(
 ):
     const.settings.NO_DELETE_DB = no_delete_db
     start_time = time.perf_counter()
+    utils.ensure_temp_file()
     match importer.name:
         case "france":
             departement_size = get_departement_size(departement)
