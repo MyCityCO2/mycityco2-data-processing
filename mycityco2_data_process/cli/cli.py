@@ -284,6 +284,7 @@ def start(
 
     const.settings.URL = f"http://{odoo_ip_adress}:8069"
     const.settings.TEMPLATE_DB = "mycityco2_default"
+    const.settings.DB = "mycityco2_default_departement"
     const.settings.USERNAME = "admin"
     const.settings.PASSWORD = "admin"
     const.settings.SQL_LOCAL_USER = "odoo"
