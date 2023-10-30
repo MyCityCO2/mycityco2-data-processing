@@ -88,3 +88,9 @@ def clone_repos() -> bool:
                 branch=branch,
                 depth=1,
             )
+
+
+def ensure_temp_file():
+    path = const.settings.TEMP_FILE_PATH
+    if not os.path.isdir(path):
+        os.makedirs(path)

@@ -47,6 +47,7 @@ def run(
 ):
     const.settings.NO_DELETE_DB = no_delete_db
     start_time = time.perf_counter()
+    utils.ensure_temp_file()
     match importer.name:
         case "france":
             departement_size = get_departement_size(departement)
@@ -205,6 +206,13 @@ def start(
         image, container, port, env=False, mounts=False, command=False
     ):
         container_name = container.split(const.settings.DOCKER_CONTAINER_PREFIX)[-1]
+        try:
+            client.images.get(image)
+        except docker_errors.ImageNotFound:
+            client.images.pull(image)
+        except Exception as e:
+            raise e
+        # raise typer.Abort()
         con = client.containers.create(
             image,
             name=container,
@@ -284,6 +292,7 @@ def start(
 
     const.settings.URL = f"http://{odoo_ip_adress}:8069"
     const.settings.TEMPLATE_DB = "mycityco2_default"
+    const.settings.DB = "mycityco2_default_departement"
     const.settings.USERNAME = "admin"
     const.settings.PASSWORD = "admin"
     const.settings.SQL_LOCAL_USER = "odoo"
